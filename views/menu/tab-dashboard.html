@@ -1,0 +1,1228 @@
+<!-- {{.TABLE_SERVER}} -->
+<!-- ESXi Dashboard Table -->
+{{if gt .TOTAL_ESXI 0}}
+<div class="card mb-4">
+	<div class="card-header d-flex flex-wrap justify-content-between gap-3">
+		<div class="card-title mb-0 me-1">
+			<h5 class="mb-1">ESXi Hosts</h5>
+			<p class="text-muted mb-0">
+				Total {{.TOTAL_ESXI}} ESXi hosts being monitored
+			</p>
+		</div>
+		<div
+			class="d-flex justify-content-md-end align-items-center gap-3 flex-wrap"
+		></div>
+	</div>
+	<div class="card-body">
+		<table
+			class="my-esxi-table cards table-sm table-hover"
+			cellspacing="0"
+			style="height: auto; max-width: 100%; min-width: 0px; min-height: 0px; width: 100%;"
+		>
+			<thead class="d-none">
+				<tr>
+					<th></th>
+					<th>VMs</th>
+					<th>Action</th>
+				</tr>
+			</thead>
+		</table>
+		<script>
+			$(document).ready(function () {
+				var table = $(".my-esxi-table").DataTable({
+					ajax: "/esxi/table",
+					pageLength: 6,
+					lengthMenu: [
+						[6, 12, 24, 48, -1],
+						[6, 12, 24, 48, "All"],
+					],
+					dom:
+						'<"row mx-1"' +
+						'<"col-12 col-md-6 d-flex align-items-center justify-content-center justify-content-md-start gap-3"l<"dt-action-buttons text-xl-end text-lg-start text-md-end text-start mt-md-0 mt-3"B>>' +
+						'<"col-12 col-md-6 d-flex align-items-center justify-content-end flex-column flex-md-row pe-3 gap-md-3"f<"invoice_status mb-3 mb-md-0">>' +
+						">t" +
+						'<"row mx-2"' +
+						'<"col-sm-12 col-md-6"i>' +
+						'<"col-sm-12 col-md-6"p>' +
+						">",
+					language: {
+						sLengthMenu: "_MENU_",
+						search: "",
+						searchPlaceholder: "Search ESXi Hosts",
+					},
+					buttons: [
+						{
+							text: '<i class="bx bx-card bx-md text-info" aria-hidden="true"></i>',
+							className: "btn",
+							action: function (e, dt, node) {
+								$(dt.table().node()).toggleClass("cards");
+								$(".bx", node).toggleClass(["bx-list-ul", "bx-card"]);
+								dt.draw("page");
+							},
+						},
+					],
+					columns: [
+						{
+							orderable: false,
+							data: null,
+							className: "text-center align-middle",
+							render: function (data, type, full, meta) {
+								const convertedID = full["id"].replaceAll(".", "_");
+								return `
+                                <div class="card-body py-2 px-0" >
+                                    <div class="ps-container ps-theme-default" data-ps-id="esxi-info-${convertedID}" style="max-height: 400px; overflow-y: auto;">
+                                        <div class="ps-content">
+                                            <!-- ESXi Host Header -->
+                                            <div class="d-flex align-items-center mb-3">
+                                                <i class="bx bx-server text-primary fs-4 me-2"></i>
+                                                <div>
+                                                    <h4 class="mb-1">
+                                                        <span class="id-${convertedID}">${full['id'] || '-'}</span>
+                                                    </h4>
+                                                    <small class="text-muted">
+                                                        <span class="host_name-${convertedID}">${full['host_name'] || 'ESXi Host'}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="ms-auto">
+                                                    <span class="status-${convertedID} badge bg-label-${full['status'] === 'online' ? 'success' : full['status'] === 'warning' ? 'warning' : 'danger'}">
+                                                        <i class="bx bx-wifi"></i> ${full['status'] || 'unknown'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <!-- System Information -->
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="bx bx-chip text-info me-2"></i>
+                                                        <small class="text-muted">
+                                                            <span class="system_vendor-${convertedID}">${full['system_vendor'] || '-'}</span>
+                                                            <span class="system_model-${convertedID}">${full['system_model'] || '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="bx bx-microchip text-secondary me-2"></i>
+                                                        <small class="text-muted">
+                                                            <span class="cpu_model-${convertedID}">${full['cpu_model'] || '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="bx bx-time-five text-warning me-2"></i>
+                                                        <small class="text-muted">
+                                                            Uptime: <span class="ago-ticker system_boot_time-${convertedID}" data-since="${full['system_boot_time'] || '-'}">${full['system_boot_time'] || '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Resource Usage -->
+                                            <div class="row g-2 mb-3">
+                                                <!-- CPU Usage -->
+                                                <div class="col-6">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <i class="bx bx-chip text-success me-1"></i>
+                                                        <small>CPU:</small>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <small class="cpu_usage_percent-${convertedID}">${full['cpu_usage_percent'] ? full['cpu_usage_percent'].toFixed(1) + '%' : '-'}</small>
+                                                        <small class="text-muted">
+                                                            <span class="cpu_cores-${convertedID}">${full['cpu_cores'] || '-'}</span> cores
+                                                        </small>
+                                                    </div>
+                                                    <div class="progress" style="height: 6px;">
+                                                        <div class="progress-bar bg-success cpu_usage_percent-${convertedID}"
+                                                             style="width: ${full['cpu_usage_percent'] || 0}%"
+                                                             role="progressbar"></div>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <span class="cpu_used_mhz-${convertedID}">${full['cpu_used_mhz'] || '-'}</span> / 
+                                                        <span class="cpu_total_mhz-${convertedID}">${full['cpu_total_mhz'] || '-'}</span> MHz
+                                                    </small>
+                                                </div>
+
+                                                <!-- Memory Usage -->
+                                                <div class="col-6">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <i class="bx bx-memory-card text-warning me-1"></i>
+                                                        <small>RAM:</small>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <small class="memory_usage_percent-${convertedID}">${full['memory_usage_percent'] ? full['memory_usage_percent'].toFixed(1) + '%' : '-'}</small>
+                                                        <small class="text-muted">
+                                                            <span class="memory_total_mb-${convertedID}">${full['memory_total_mb'] ? (full['memory_total_mb'] / 1024).toFixed(1) + 'GB' : '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                    <div class="progress" style="height: 6px;">
+                                                        <div class="progress-bar bg-warning memory_usage_percent-${convertedID}"
+                                                             style="width: ${full['memory_usage_percent'] || 0}%"
+                                                             role="progressbar"></div>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <span class="memory_used_mb-${convertedID}">${full['memory_used_mb'] || '-'}</span> / 
+                                                        <span class="memory_total_mb-${convertedID}">${full['memory_total_mb'] || '-'}</span> MB
+                                                    </small>
+                                                </div>
+
+                                                <!-- Storage Usage -->
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <i class="bx bx-hdd text-info me-1"></i>
+                                                        <small>Storage:</small>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <small class="storage_total_usage_percent-${convertedID}">${full['storage_total_usage_percent'] ? full['storage_total_usage_percent'].toFixed(1) + '%' : '-'}</small>
+                                                        <small class="text-muted">
+                                                            <span class="storage_total_capacity-${convertedID}">${full['storage_total_capacity'] ? (full['storage_total_capacity'] / (1024*1024*1024*1024)).toFixed(1) + 'TB' : '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                    <div class="progress" style="height: 6px;">
+                                                        <div class="progress-bar bg-info storage_total_usage_percent-${convertedID}"
+                                                             style="width: ${full['storage_total_usage_percent'] || 0}%"
+                                                             role="progressbar"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Datastores -->
+                                            ${full['storage_datastores'] && full['storage_datastores'].length > 0 ? `
+                                            <div class="mb-3">
+                                                <h6 class="text-muted mb-2">
+                                                    <i class="bx bx-data me-1"></i>Datastores
+                                                </h6>
+                                                ${full['storage_datastores'].map((ds, index) => `
+                                                    <div class="border rounded p-2 mb-2">
+                                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                                            <small class="fw-bold">${ds.name || 'Datastore'}</small>
+                                                            <small class="text-muted">${ds.usage_percent ? ds.usage_percent.toFixed(1) + '%' : '-'}</small>
+                                                        </div>
+                                                        <div class="progress" style="height: 4px;">
+                                                            <div class="progress-bar bg-primary"
+                                                                 style="width: ${ds.usage_percent || 0}%"
+                                                                 role="progressbar"></div>
+                                                        </div>
+                                                        <small class="text-muted">
+                                                            ${ds.capacity ? (ds.capacity / (1024*1024*1024)).toFixed(1) + 'GB' : '-'}
+                                                        </small>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                            ` : ''}
+
+                                            <!-- Connection Status -->
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <small class="text-muted">
+                                                        <i class="bx bx-link me-1"></i>
+                                                        <span class="host_connection_state-${convertedID}">${full['host_connection_state'] || '-'}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small class="text-muted">
+                                                        <i class="bx bx-health me-1"></i>
+                                                        <span class="host_overall_status-${convertedID}">${full['host_overall_status'] || '-'}</span>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>`;
+							},
+						},
+						{
+							data: "vms_info",
+							className: "d-flex",
+							render: function (data, type, full, meta) {
+								const convertedID = full["id"].replaceAll(".", "_");
+								const vmsInfo = full['vms_info'] || [];
+								
+								return `
+                                <div class="card-body py-2 px-0">
+                                    <div class="d-flex align-items-center justify-content-between mb-3" >
+                                        <h6 class="mb-0">
+                                            <i class="bx bx-devices text-primary me-1"></i>
+                                            Virtual Machines (${vmsInfo.length})
+                                        </h6>
+                                        <small class="text-muted">
+                                            <i class="bx bx-time me-1"></i>
+                                            <span class="timestamp-${convertedID}">${full['timestamp'] ? new Date(full['timestamp']).toLocaleString() : '-'}</span>
+                                        </small>
+                                    </div>
+                                    
+                                    ${vmsInfo.length > 0 ? `
+                                    <div class="ps-container ps-theme-default" data-ps-id="vms_info-${convertedID}" style="max-height: 400px; max-width: 100%;">
+                                        <div class="ps-content">
+                                            <div class="d-flex flex-nowrap" style="gap: 12px; overflow-x: auto; padding-bottom: 10px;">
+                                                ${vmsInfo.map((vm, index) => `
+                                                    <div class="flex-shrink-0 border rounded p-3" style="min-width: 280px;max-width: 350px; max-height: 450px;">
+                                                        <!-- VM Header -->
+                                                        <div class="d-flex align-items-start justify-content-between mb-2">
+                                                            <div class="flex-grow-1">
+                                                                <h6 class="mb-1 text-truncate" title="${vm.name || 'Unknown VM'}">
+                                                                    <i class="bx bx-desktop me-1"></i>
+                                                                    ${(vm.name || 'Unknown VM').length > 20 ? (vm.name || 'Unknown VM').substring(0, 20) + '...' : (vm.name || 'Unknown VM')}
+                                                                </h6>
+                                                                <small class="text-muted text-truncate d-block" title="${vm.uuid || ''}">
+                                                                    <span class="uuid-${convertedID}-${index}">${vm.uuid ? vm.uuid.substring(0, 8) + '...' : '-'}</span>
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                        <span class="badge ms-2 ${vm.power_state === 'poweredOn' ? 'bg-success' : vm.power_state === 'poweredOff' ? 'bg-danger' : 'bg-warning'}">
+                                                            <i class="bx ${vm.power_state === 'poweredOn' ? 'bx-power' : 'bx-power-off'} me-1"></i>
+                                                            <span class="power_state-${convertedID}-${index}">${vm.power_state || 'unknown'}</span>
+                                                        </span>
+                                                        
+                                                        <!-- VM Resources -->
+                                                        <div class="row g-2 mb-2">
+                                                            <!-- CPU -->
+                                                            <div class="col-6">
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <i class="bx bx-chip text-success me-1" style="font-size: 12px;"></i>
+                                                                    <small>CPU</small>
+                                                                </div>
+                                                                <small class="d-block">
+                                                                    <span class="cpu_cores-${convertedID}-${index}">${vm.cpu_cores || 0}</span> cores
+                                                                </small>
+                                                                <small class="text-muted">
+                                                                    <span class="cpu_usage_mhz-${convertedID}-${index}">${vm.cpu_usage_mhz || 0}</span> MHz
+                                                                </small>
+                                                            </div>
+                                                            
+                                                            <!-- Memory -->
+                                                            <div class="col-6">
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <i class="bx bx-memory-card text-warning me-1" style="font-size: 12px;"></i>
+                                                                    <small>RAM</small>
+                                                                </div>
+                                                                <small class="d-block">
+                                                                    <span class="memory_mb-${convertedID}-${index}">${vm.memory_mb ? (vm.memory_mb / 1024).toFixed(1) + 'GB' : '0GB'}</span>
+                                                                </small>
+                                                                <div class="progress mt-1" style="height: 4px;">
+                                                                    <div class="progress-bar bg-warning memory_usage_percent-${convertedID}-${index}" 
+                                                                         style="width: ${vm.memory_usage_percent || 0}%" 
+                                                                         role="progressbar"></div>
+                                                                </div>
+                                                                <small class="text-muted">
+                                                                    <span class="memory_usage_percent-${convertedID}-${index}">${vm.memory_usage_percent ? vm.memory_usage_percent.toFixed(1) + '%' : '0%'}</span>
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <!-- IP Addresses -->
+                                                        ${vm.ips && vm.ips.length > 0 ? `
+                                                        <div class="mb-2">
+                                                            <div class="d-flex align-items-center mb-1">
+                                                                <i class="bx bx-network-chart text-info me-1" style="font-size: 12px;"></i>
+                                                                <small>IP Addresses</small>
+                                                            </div>
+                                                            <div class="d-flex" style="gap:8px; overflow-x:auto; padding-bottom:6px; max-width:100%;">
+                                                                ${vm.ips.map((ip, ipIndex) => `
+                                                                    <span
+                                                                        class="badge ips-${convertedID}-${index}-${ipIndex}"
+                                                                        title="${ip}"
+                                                                        style="background:#0d6efd;color:#ffffff;font-size:12px;white-space:nowrap;padding:6px 8px;border-radius:6px;box-shadow:0 0 0 1px rgba(0,0,0,0.05) inset;"
+                                                                    >
+                                                                        ${ip}
+                                                                    </span>
+                                                                `).join('')}
+                                                            </div>
+                                                        </div>
+                                                        ` : `
+                                                        <div class="mb-2">
+                                                            <small class="text-muted">
+                                                                <i class="bx bx-network-chart me-1"></i>
+                                                                No IP assigned
+                                                            </small>
+                                                        </div>
+                                                        `}
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : `
+                                    <div class="text-center py-4">
+                                        <i class="bx bx-desktop text-muted" style="font-size: 48px;"></i>
+                                        <div class="text-muted mt-2">No virtual machines found</div>
+                                    </div>
+                                    `}
+                                </div>`;
+							},
+						},
+					],
+					drawCallback: function (settings) {
+						var api = this.api();
+						var $table = $(api.table().node());
+						if ($table.hasClass("cards")) {
+							$table.find("tbody").addClass("row gy-5 my-2");
+							// $table.find("tbody tr").addClass("col-sm-6 col-lg-12 p-2 my-0");
+                            
+							$table.find("tbody tr").addClass("col-lg-6 my-1");
+							$table.find("tbody tr").each(function () {
+								if ($(this).children(".card-deck").length === 0) {
+									$(this).children("td").wrapAll('<div class="card-deck d-flex flex-column border rounded h-100"></div>');
+								}
+							});
+							var labels = [];
+							$("thead th", $table).each(function () {
+								labels.push($(this).text());
+							});
+							$("tbody tr", $table).each(function () {
+								$(this).find("td").each(function (column) {
+									$(this).attr("data-label", labels[column]);
+								});
+							});
+							$("tbody tr", $table).each(function () {
+								$(this).height("auto");
+							});
+							$("tbody td", $table).each(function () {
+								$(this).removeClass("d-flex");
+							});
+						} else {
+							$table.find("tbody").removeClass("row gy-4 mb-4");
+							$table.find("tbody tr").removeClass("col-lg-6 my-1");
+							$table.find(".card-deck").children("td").unwrap();
+							$("tbody td", $table).each(function () {
+								$(this).removeAttr("data-label");
+							});
+							$("tbody tr", $table).each(function () {
+								$(this).height("auto");
+							});
+						}
+						
+						// Initialize Perfect Scrollbar
+						setTimeout(function() {
+							$('.ps-container').each(function() {
+								const ps = new PerfectScrollbar(this, {
+									wheelSpeed: 2,
+									wheelPropagation: true,
+									minScrollbarLength: 20,
+									suppressScrollX: false,
+									suppressScrollY: false
+								});
+							});
+                            
+						}, 100);
+						setTimeout(function() {
+							// const ref = document.querySelector('.card-body');
+                            // const followers = ref.querySelectorAll('[data-ps-id^="vms_info-"]');
+
+
+                            
+                            // const syncWidth = () => {
+                            //     const table = document.querySelector('.my-esxi-table');
+                            //     const cardBody = table.closest('.card-body');
+                            //     const action = cardBody.querySelector('.dt-action-buttons'); // how to check if this has class element with classname "bx-card"
+                            //     var calculatedWidth = ref.clientWidth - 580; // Adjust for padding/margin if necessary
+                            //     if (action && action.querySelector('.bx-card')) {
+                            //         // console.log('✅ Found element with class "bx-card" inside .dt-action-buttons');
+                            //         calculatedWidth = ref.clientWidth - 68; // Adjust for padding/margin if necessary
+                            //     }
+                            //     followers.forEach(follower => {
+                            //         follower.style.width = calculatedWidth + 'px';
+                            //     });
+                            // };
+                            const syncWidth = () => {
+                                const table = document.querySelector('.my-esxi-table');
+                                const cardBody = table.closest('.card-body');
+                                const action = cardBody.querySelector('.dt-action-buttons'); // how to check if this has class element with classname "bx-card"
+                                const follower = cardBody.querySelector('tbody');
+                                if (action && action.querySelector('.bx-card')) {
+                                    // console.log('✅ Found element with class "bx-card" inside .dt-action-buttons');
+                                    calculatedWidth = cardBody.clientWidth - 10; // Adjust for padding/margin if necessary
+                                    follower.style.width = calculatedWidth + 'px';
+                                } else {
+                                    const vms_info = cardBody.querySelectorAll('[data-ps-id^="vms_info-"]');
+                                    var calculatedWidth = cardBody.clientWidth - 580; // Adjust for padding/margin if necessary
+                                    
+                                    vms_info.forEach(fl => {
+                                        fl.style.width = calculatedWidth + 'px';
+                                    });
+                                }
+                            };
+
+                            window.addEventListener('resize', syncWidth);
+                            syncWidth();
+                            
+						}, 120);
+					},
+				});
+			});
+		</script>
+	</div>
+</div>
+{{end}}
+<div class="card mb-4">
+	<div class="card-header d-flex flex-wrap justify-content-between gap-3">
+		<div class="card-title mb-0 me-1">
+			<h5 class="mb-1">Server</h5>
+			<p class="text-muted mb-0">
+				Total {{.TOTAL_SERVERS}} server yang sedang dimonitor
+			</p>
+		</div>
+		<div
+			class="d-flex justify-content-md-end align-items-center gap-3 flex-wrap"
+		></div>
+	</div>
+	<div class="card-body">
+		<table
+			class="my-server-table cards table-sm table-hover"
+			cellspacing="0"
+			width="100%"
+		>
+			<thead class="d-none">
+				<tr>
+					<th></th>
+					<th>Name</th>
+					<th>Action</th>
+				</tr>
+			</thead>
+		</table>
+		<script>
+			$(document).ready(function () {
+				var table = $(".my-server-table").DataTable({
+					ajax: "/servers/table",
+					pageLength: 6, // Set default number of items displayed to 6
+					lengthMenu: [
+						[6, 12, 24, 48, -1],
+						[6, 12, 24, 48, "All"],
+					], // Customize the options in the "Show entries" dropdown
+					dom:
+						'<"row mx-1"' +
+						'<"col-12 col-md-6 d-flex align-items-center justify-content-center justify-content-md-start gap-3"l<"dt-action-buttons text-xl-end text-lg-start text-md-end text-start mt-md-0 mt-3"B>>' +
+						'<"col-12 col-md-6 d-flex align-items-center justify-content-end flex-column flex-md-row pe-3 gap-md-3"f<"invoice_status mb-3 mb-md-0">>' +
+						">t" +
+						'<"row mx-2"' +
+						'<"col-sm-12 col-md-6"i>' +
+						'<"col-sm-12 col-md-6"p>' +
+						">",
+					language: {
+						sLengthMenu: "_MENU_",
+						search: "",
+						searchPlaceholder: "Cari Kursus",
+					},
+					// Buttons with Dropdown
+					buttons: [
+						{
+							text: '<i class="bx bx-card bx-md text-info" aria-hidden="true"></i>',
+							className: "btn",
+							action: function (e, dt, node) {
+								$(dt.table().node()).toggleClass("cards");
+								$(".bx", node).toggleClass(["bx-list-ul", "bx-card"]);
+
+								dt.draw("page");
+							},
+						},
+					],
+					columns: [
+						{
+							orderable: false,
+							data: null,
+							className: "text-center align-middle",
+							render: function (data, type, full, meta) {
+								const convertedID = full["id"].replaceAll(".", "_");
+								return `
+                                <div class="row align-items-center">
+                                    <img
+                                        src="${full['logo'] || '/assets/self/img/ubuntu.svg'}"
+                                        class="col-sm-3 img-fluid rounded pe-sm-0"
+                                        style="object-fit: cover"
+                                    />
+                                    <div class="col-sm-9 d-flex flex-column align-items-start ps-sm-0">
+                                        <div class="text-muted small mb-1">
+                                            <i class="bx bx-desktop"></i> ${full['os'] || '-'} ${full['os_version']
+                                            ||''} ${full['is_self'] ? '<i class="bx bxs-star text-warning me-2" title="This is your server"></i>'
+                                            : ""}
+                                        </div>
+                                        <div class="text-muted small mb-1">
+                                            <i class="bx bx-chip"></i> ${full['architecture'] || "-"}
+                                        </div>
+                                        <div class="text-muted small mb-1">
+                                            <i class="bx bx-microchip"></i>${full['cpu_model'] || "-"}
+                                        </div>
+                                        <div class="text-muted small mb-1">
+                                            <i class="bx bx-cog"></i> Kernel: ${full['kernel_version'] || "-"}
+                                        </div>
+                                        <div class="text-muted small mb-1">
+                                            <i class="bx bx-time-five"></i> Uptime:
+                                            <span
+                                                class="ago-ticker uptime_since-${convertedID}"
+                                                data-since="${full['uptime_since']}"
+                                            >
+                                            </span>
+                                        </div>
+                                        <div class="text-muted small mb-1">
+                                            <i class="fa fa-thermometer-half"></i>
+                                            <span class="temperature-${convertedID}"></span>
+                                                ${full['temperature'] ? full['temperature'] + '°C' : '-'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                `;
+							},
+						},
+						{
+							data: "server_name",
+							className: "align-middle",
+							render: function (data, type, full, meta) {
+								const convertedID = full["id"].replaceAll(".", "_");
+								return `
+                                <div class="card-body py-2 px-0">
+                                    <div
+                                        class="mb-2 d-flex flex-row justify-content-between align-content-center"
+                                    >
+                                        <div class="d-flex flex-row align-items-center pt-1">
+                                            <i class="bx bx-network-chart text-info"></i>
+                                            <h5 class="mb-0 ms-1">${full['ip'] || "-"}</h5>
+                                            <h5 class="mb-0 ms-1">
+                                                [<span
+                                                    class="group_ip-${convertedID} editable"
+                                                    data-key="group_ip-${convertedID}"
+                                                    data-value="${full['group_ip'] || '-'}"
+                                                    >${full['group_ip'] || "-"}</span
+                                                >]
+                                            </h5>
+                                        </div>
+                                        <div>
+                                            <span
+                                                class="status-${convertedID} badge bg-label-${full['status'] === 'online'? 'success': full['status'] === 'warning'? 'warning': 'danger'}"
+                                            >
+                                                <i class="bx bx-wifi"></i> ${ full['status'] || "unknown" }
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <h6 class="mb-1">
+                                        <i class="bx bx-server text-primary"></i>
+                                        <span class="server_name-${convertedID}"
+                                            >${full['server_name'] || full['name'] || "-"}</span
+                                        >
+                                    </h6>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6 small">
+                                            <i class="bx bx-chip" style="color: green"></i> CPU:
+                                            <span class="cpu_usage-${convertedID}">${full['cpu_usage'] || "-"}</span>%
+                                            (<span class="cpu_cores-${convertedID}">${full['cpu_cores'] || "-"}</span>
+                                            cores)
+                                            <div class="progress mb-1" style="height: 8px">
+                                                <div
+                                                    class="progress-bar bg-info cpu_usage-${convertedID}"
+                                                    role="progressbar"
+                                                    style="width: ${full['cpu_usage'] || 0}%"
+                                                    aria-valuenow="${full['cpu_usage'] || 0}"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100"
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 small">
+                                            <i class="bx bx-memory-card" style="color: orange"></i> RAM:
+                                            <span class="memory_usage-${convertedID}"
+                                                >${full['memory_usage'] || "-"}</span
+                                            >%
+                                            <div class="progress mb-1" style="height: 8px">
+                                                <div
+                                                    class="progress-bar bg-info memory_usage-${convertedID}"
+                                                    role="progressbar"
+                                                    style="width: ${full['memory_usage'] || 0}%"
+                                                    aria-valuenow="${full['memory_usage'] || 0}"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100"
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 small">
+                                            <i class="bx bx-hdd" style="color: darkblue"></i> Disk:
+                                            <span class="disk_usage-${convertedID}">
+                                                ${ full['disk_used'] && full['disk_total'] ? ( full['disk_used'] /
+                                                1073741824 ).toFixed(1) + "GB / " + ( full['disk_total'] / 1073741824
+                                                ).toFixed(1) + "GB" : "-" }
+                                            </span>
+                                            <div class="progress mb-1" style="height: 8px">
+                                                <div
+                                                    class="progress-bar bg-info disk_usage-${convertedID}"
+                                                    role="progressbar"
+                                                    style="width: ${full['disk_used'] && full['disk_total']? ((full['disk_used'] / full['disk_total']) * 100).toFixed(1): 0}%;"
+                                                    aria-valuenow="${full['disk_used'] && full['disk_total']? ((full['disk_used'] / full['disk_total']) * 100).toFixed(1): 0}"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100"
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 small">
+                                            <i class="bx bx-transfer"></i> Net:
+                                            <span class="ssh_connections-${convertedID}"
+                                                >${full['ssh_connections'] || "0"}</span
+                                            >
+                                            SSH
+                                        </div>
+                                        <div class="col-6 small">
+                                            <i class="fa-solid fa-desktop me-1"></i>
+                                            GUI:
+                                            <span class="ms-1 use_gui-${convertedID}">
+                                                ${ full['use_gui'] ? '<i class="fa fa-check-circle text-success"></i>' :
+                                                '<i class="fa fa-times-circle text-danger"></i>' }
+                                            </span>
+                                        </div>
+                                        ${full['use_gui']? `
+                                        <div class="col-6 small">
+                                            <i class="fa fa-mouse-pointer"></i>
+                                            <span class="text-muted last_mouse_movement-${convertedID}"
+                                                >${ full['last_mouse_movement'] || "-" }</span
+                                            >
+                                        </div>
+                                        `: "" }
+                                        <div class="col-6 small">
+                                            <i class="fa fa-terminal"></i>
+                                            <span class="text-muted last_cli_activity-${convertedID}"
+                                                >${full['last_cli_activity'] || "-"}</span
+                                            >
+                                        </div>
+                                        <div class="col-6 small">
+                                            <i class="fa-solid fa-ethernet"></i>
+                                            <button
+                                                class="btn p-0 text-muted total_port_opens-${convertedID}"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalPortOpenList"
+                                                data-key="open_ports_list-${convertedID}"
+                                                data-ip="${full['ip']}"
+                                            >
+                                                ${ full['total_port_opens'] || "-" }
+                                            </button>
+                                            ports open
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-2">
+                                        <button
+                                            class="btn p-0 text-muted"
+                                            data-key="running_services_list-${convertedID}"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalServiceRunning"
+                                            data-ip="${full['ip']}"
+                                        >
+                                            <i class="fa fa-exclamation-circle"></i>
+                                        </button>
+                                        Services:
+                                        <span class="text-success services_running-${convertedID}"
+                                            >${full['services_running'] || '0'} running</span
+                                        >,
+                                        <span class="text-danger services_failed-${convertedID}"
+                                            >${full['services_failed'] || '0'} failed</span
+                                        >
+                                    </div>
+                                </div>`;
+							},
+						},
+					],
+					drawCallback: function (settings) {
+						setInterval(function () {
+							$(".ago-ticker").each(function () {
+								var since = $(this).data("since");
+								if (!since) {
+									$(this).text("-");
+									return;
+								}
+								function updateUptime(elem, since) {
+									var start = new Date(since);
+									var now = new Date();
+									var diff = Math.floor((now - start) / 1000);
+									var days = Math.floor(diff / 86400);
+									var hours = Math.floor((diff % 86400) / 3600);
+									var minutes = Math.floor((diff % 3600) / 60);
+									var seconds = diff % 60;
+									var str = "";
+									if (days > 0) str += days + "d ";
+									if (hours > 0 || days > 0) str += hours + "h ";
+									if (minutes > 0 || hours > 0 || days > 0)
+										str += minutes + "m ";
+									str += seconds + "s";
+									elem.text(str.trim());
+								}
+								var elem = $(this);
+								updateUptime(elem, since);
+								// function tick() {
+								//     setTimeout(tick, 1000);
+								// }
+								// tick();
+							});
+						}, 1000);
+						var api = this.api();
+						var $table = $(api.table().node());
+						if ($table.hasClass("cards")) {
+							// Add class "row gy-4 mb-4" to tbody
+							$table.find("tbody").addClass("row gy-5 my-2 ");
+
+							// Add class "col-sm-6 col-lg-4" to each tr child of tbody
+							$table.find("tbody tr").addClass("col-sm-6 col-md-6 col-lg-4 col-xl-3 col-xxl-2 p-2 my-0");
+
+							$table.find("tbody tr").each(function () {
+								if ($(this).children(".card-deck").length === 0) {
+									$(this)
+										.children("td")
+										.wrapAll(
+											'<div class="card-deck d-flex flex-column border rounded h-100"></div>'
+										);
+								}
+							});
+							// Create an array of labels containing all table headers
+							var labels = [];
+							$("thead th", $table).each(function () {
+								labels.push($(this).text());
+							});
+
+							// Add data-label attribute to each cell
+							$("tbody tr", $table).each(function () {
+								$(this)
+									.find("td")
+									.each(function (column) {
+										$(this).attr("data-label", labels[column]);
+									});
+							});
+
+							// var max = 0;
+							// $("tbody tr", $table)
+							// 	.each(function () {
+							// 		max = Math.max($(this).height(), max);
+							// 	})
+							// 	.height(max);
+							$("tbody tr", $table).each(function () {
+								$(this).height("auto");
+							});
+						} else {
+							// Remove class "row gy-4 mb-4" from tbody
+							$table.find("tbody").removeClass("row gy-4 mb-4");
+
+							// Remove class "col-sm-6 col-lg-4" from each tr child of tbody
+							$table.find("tbody tr").removeClass("col-sm-6 col-md-6 col-lg-4 col-xl-3 col-xxl-2 p-2 my-0");
+
+							// Unwrap the div wrapping all td elements
+							$table.find(".card-deck").children("td").unwrap();
+
+							// Remove data-label attribute from each cell
+							$("tbody td", $table).each(function () {
+								$(this).removeAttr("data-label");
+							});
+
+							$("tbody tr", $table).each(function () {
+								$(this).height("auto");
+							});
+						}
+					},
+				});
+			});
+			$(document).on("dblclick", ".editable", function () {
+				var $span = $(this);
+				var oldValue = $span.data("value");
+				var key = $span.data("key");
+				var input = $(
+					'<input type="text" class="form-control border-primary" style="margin:0;padding:0;display:inline-block;min-width:90px;">'
+				)
+					.val(oldValue)
+					.on("blur", function () {
+						var newValue = input.val();
+						if (newValue === oldValue) {
+							$span.text(oldValue);
+							return;
+						}
+						Swal.fire({
+							title: "Confirm Change",
+							text: `Change value from "${oldValue}" to "${newValue}"?`,
+							icon: "question",
+							showCancelButton: true,
+							confirmButtonText: "Yes",
+							cancelButtonText: "No",
+						}).then((result) => {
+							if (result.isConfirmed) {
+								$span.text(newValue); // optimistic update
+								$.ajax({
+									url: "/servers/table",
+									method: "PATCH",
+									contentType: "application/json",
+									data: JSON.stringify({ key: key, value: newValue }),
+									success: function (resp) {
+										$span.data("value", newValue);
+									},
+									error: function () {
+										$span.text(oldValue); // rollback
+										Swal.fire("Failed", "Update failed", "error");
+									},
+								});
+							} else {
+								$span.text(oldValue); // revert to old value, do not fetch
+							}
+						});
+					})
+					.on("keydown", function (e) {
+						if (e.key === "Enter") input.blur();
+						if (e.key === "Escape") {
+							$span.text(oldValue);
+						}
+					});
+				$span.empty().append(input);
+				input.focus().select();
+			});
+		</script>
+	</div>
+</div>
+
+<!-- Modal for Port Open List -->
+<div
+	class="modal fade"
+	id="modalPortOpenList"
+	tabindex="-1"
+	aria-labelledby="modalPortOpenListLabel"
+	aria-hidden="true"
+>
+	<div class="modal-dialog modal-dialog-centered modal-xl">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="modalPortOpenListLabel">Open Ports</h5>
+				<button
+					type="button"
+					class="btn-close"
+					data-bs-dismiss="modal"
+					aria-label="Close"
+				></button>
+			</div>
+			<div class="modal-body">
+				<div id="portOpenListLoading" class="text-center my-3">
+					<span
+						class="spinner-border spinner-border-sm text-info"
+						role="status"
+						aria-hidden="true"
+					></span>
+					<span class="ms-2">Fetching data...</span>
+				</div>
+				<ul id="portOpenListContent" class="list-group d-none row"></ul>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	$("#modalPortOpenList").on("show.bs.modal", function (event) {
+		var button = $(event.relatedTarget);
+		var key = button.data("key");
+		var ip = button.data("ip");
+		var $modal = $(this);
+		$modal
+			.find("#modalPortOpenListLabel")
+			.text("Open Ports for " + (ip || "Unknown"));
+		$modal.find("#portOpenListLoading").removeClass("d-none");
+		$modal.find("#portOpenListContent").addClass("d-none").empty();
+
+		$.getJSON("/servers/table/" + key, function (resp) {
+			$modal.find("#portOpenListLoading").addClass("d-none");
+			var ports = resp.value || [];
+			if (ports.length === 0) {
+				$modal
+					.find("#portOpenListContent")
+					.removeClass("d-none")
+					.addClass("list-group")
+					.append(
+						'<li class="list-group-item text-muted">No open ports found.</li>'
+					);
+			} else {
+				ports.forEach(function (port) {
+					$modal
+						.find("#portOpenListContent")
+						.removeClass("d-none")
+						.removeClass("list-group")
+						.append(
+							'<li class="list-group-item m-2 p-3 border rounded col-12 col-sm-4 col-md-3 col-lg-2 col-xl-1 ">' +
+								port +
+								"</li>"
+						);
+				});
+			}
+		}).fail(function () {
+			$modal.find("#portOpenListLoading").addClass("d-none");
+			$modal
+				.find("#portOpenListContent")
+				.removeClass("d-none")
+				.addClass("list-group")
+				.append(
+					'<li class="list-group-item text-danger">Failed to fetch port list.</li>'
+				);
+		});
+	});
+</script>
+<!-- Modal for Services Running List -->
+<div
+	class="modal fade"
+	id="modalServiceRunning"
+	tabindex="-1"
+	aria-labelledby="modalServiceRunningLabel"
+	aria-hidden="true"
+>
+	<div class="modal-dialog modal-dialog-centered modal-fullscreen-lg-down modal-xl">
+		<div class="modal-content">
+			<div class="modal-header bg-primary text-white">
+				<div class="d-flex align-items-center">
+					<i class="bx bx-server fs-4 me-2"></i>
+					<div>
+						<h5 class="modal-title mb-0" id="modalServiceRunningLabel">Running Services</h5>
+						<small class="opacity-75" id="modalServiceRunningSubtitle">Loading...</small>
+					</div>
+				</div>
+				<button
+					type="button"
+					class="btn-close btn-close-white"
+					data-bs-dismiss="modal"
+					aria-label="Close"
+				></button>
+			</div>
+			<div class="modal-body p-0">
+				<!-- Loading State -->
+				<div id="modalServiceRunningLoading" class="text-center py-5">
+					<div class="spinner-border text-primary mb-3" role="status">
+						<span class="visually-hidden">Loading...</span>
+					</div>
+					<p class="text-muted mb-0">Fetching services data...</p>
+				</div>
+				
+				<!-- Content Area -->
+				<div id="modalServiceRunningContent" class="d-none">
+					<!-- Filter and Search Bar -->
+					<div class="bg-light p-3 border-bottom">
+						<div class="row g-3">
+							<div class="col-md-6">
+								<div class="input-group">
+									<span class="input-group-text"><i class="bx bx-search"></i></span>
+									<input type="text" class="form-control" id="serviceSearchInput" placeholder="Search services...">
+								</div>
+							</div>
+							<div class="col-md-3">
+								<select class="form-select" id="serviceTypeFilter">
+									<option value="">All Services</option>
+									<option value="true">Systemd Services</option>
+									<option value="false">Regular Processes</option>
+								</select>
+							</div>
+							<div class="col-md-3">
+								<select class="form-select" id="serviceProtocolFilter">
+									<option value="">All Protocols</option>
+									<option value="tcp">TCP</option>
+									<option value="udp">UDP</option>
+								</select>
+							</div>
+						</div>
+					</div>
+					
+					<!-- Services List Container -->
+					<div class="p-3">
+						<div id="serviceStats" class="row g-3 mb-4">
+							<div class="col-6 col-md-3">
+								<div class="card border-0 bg-success bg-opacity-10">
+									<div class="card-body text-center p-2">
+										<div class="fs-4 fw-bold text-white" id="totalServices">0</div>
+										<small class="text-white">Total Services</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-6 col-md-3">
+								<div class="card border-0 bg-info bg-opacity-10">
+									<div class="card-body text-center p-2">
+										<div class="fs-4 fw-bold text-white" id="systemdServices">0</div>
+										<small class="text-white">Systemd</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-6 col-md-3">
+								<div class="card border-0 bg-warning bg-opacity-10">
+									<div class="card-body text-center p-2">
+										<div class="fs-4 fw-bold text-white" id="tcpServices">0</div>
+										<small class="text-white">TCP</small>
+									</div>
+								</div>
+							</div>
+							<div class="col-6 col-md-3">
+								<div class="card border-0 bg-secondary bg-opacity-10">
+									<div class="card-body text-center p-2">
+										<div class="fs-4 fw-bold text-white" id="udpServices">0</div>
+										<small class="text-white">UDP</small>
+									</div>
+								</div>
+							</div>
+						</div>
+						
+						<div id="servicesList" class="row g-3"></div>
+						<div id="noServicesMessage" class="text-center py-5 d-none">
+							<i class="bx bx-info-circle fs-1 text-muted mb-3"></i>
+							<h6 class="text-muted">No services found</h6>
+							<p class="small text-muted mb-0">There are no running services for this server or try adjusting your filters.</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	$("#modalServiceRunning").on("show.bs.modal", function (event) {
+		const button = $(event.relatedTarget);
+		const ip = button.data("ip");
+		const $modal = $(this);
+		
+		// Reset modal state
+		$modal.find("#modalServiceRunningLabel").text("Running Services");
+		$modal.find("#modalServiceRunningSubtitle").text("Loading...");
+		$modal.find("#modalServiceRunningLoading").removeClass("d-none");
+		$modal.find("#modalServiceRunningContent").addClass("d-none");
+		$modal.find("#servicesList").empty();
+		
+		// Reset filters
+		$modal.find("#serviceSearchInput").val("");
+		$modal.find("#serviceTypeFilter").val("");
+		$modal.find("#serviceProtocolFilter").val("");
+
+		$.getJSON("/services/" + ip, function (resp) {
+			$modal.find("#modalServiceRunningLoading").addClass("d-none");
+			$modal.find("#modalServiceRunningContent").removeClass("d-none");
+			
+			const services = resp.services || [];
+			const total = resp.total || 0;
+			
+			// Update header
+			$modal.find("#modalServiceRunningSubtitle").text(`${total} services found for ${ip}`);
+			
+			// Calculate stats
+			const systemdCount = services.filter(s => s.is_service).length;
+			const tcpCount = services.filter(s => s.ip_address_port && s.ip_address_port.startsWith('tcp:')).length;
+			const udpCount = services.filter(s => s.ip_address_port && s.ip_address_port.startsWith('udp:')).length;
+			
+			// Update stats
+			$modal.find("#totalServices").text(total);
+			$modal.find("#systemdServices").text(systemdCount);
+			$modal.find("#tcpServices").text(tcpCount);
+			$modal.find("#udpServices").text(udpCount);
+			
+			if (services.length === 0) {
+				$modal.find("#noServicesMessage").removeClass("d-none");
+				return;
+			}
+			
+			// Store original services data for filtering
+			$modal.data("originalServices", services);
+			
+			// Render services
+			renderServices(services, $modal);
+			
+		}).fail(function () {
+			$modal.find("#modalServiceRunningLoading").addClass("d-none");
+			$modal.find("#modalServiceRunningContent").removeClass("d-none");
+			$modal.find("#noServicesMessage").removeClass("d-none")
+				.find("h6").text("Failed to load services")
+				.next("p").text("Unable to fetch services data from the server. Please try again.");
+		});
+	});
+	
+	// Search and filter functionality
+	$(document).on("input", "#serviceSearchInput", function() {
+		filterServices();
+	});
+	
+	$(document).on("change", "#serviceTypeFilter, #serviceProtocolFilter", function() {
+		filterServices();
+	});
+	
+	function filterServices() {
+		const $modal = $("#modalServiceRunning");
+		const originalServices = $modal.data("originalServices") || [];
+		const searchTerm = $("#serviceSearchInput").val().toLowerCase();
+		const typeFilter = $("#serviceTypeFilter").val();
+		const protocolFilter = $("#serviceProtocolFilter").val();
+		
+		let filteredServices = originalServices.filter(service => {
+			// Search filter
+			const matchesSearch = !searchTerm || 
+				service.name.toLowerCase().includes(searchTerm) ||
+				service.process.toLowerCase().includes(searchTerm) ||
+				service.description.toLowerCase().includes(searchTerm) ||
+				service.ip_address_port.toLowerCase().includes(searchTerm);
+			
+			// Type filter
+			const matchesType = !typeFilter || service.is_service.toString() === typeFilter;
+			
+			// Protocol filter
+			const matchesProtocol = !protocolFilter || 
+				(service.ip_address_port && service.ip_address_port.toLowerCase().startsWith(protocolFilter + ':'));
+			
+			return matchesSearch && matchesType && matchesProtocol;
+		});
+		
+		renderServices(filteredServices, $modal);
+	}
+	
+	function renderServices(services, $modal) {
+		const $servicesList = $modal.find("#servicesList");
+		const $noMessage = $modal.find("#noServicesMessage");
+		
+		$servicesList.empty();
+		
+		if (services.length === 0) {
+			$noMessage.removeClass("d-none");
+			return;
+		}
+		
+		$noMessage.addClass("d-none");
+		
+		services.forEach(function(service) {
+			const startedDate = service.started_at ? new Date(service.started_at).toLocaleString() : 'Unknown';
+			const protocolBadge = service.ip_address_port ? 
+				(service.ip_address_port.startsWith('tcp:') ? 'bg-warning' : 'bg-info') : 'bg-secondary';
+			const protocol = service.ip_address_port ? service.ip_address_port.split(':')[0].toUpperCase() : 'N/A';
+			const address = service.ip_address_port ? service.ip_address_port.substring(4) : 'N/A';
+			
+			const serviceCard = `
+				<div class="col-12 col-lg-6 col-xl-4">
+					<div class="card border h-100">
+						<div class="card-body p-3">
+							<div class="d-flex align-items-start justify-content-between mb-2">
+								<div class="d-flex align-items-center">
+									<i class="bx ${service.is_service ? 'bx-cog text-success' : 'bx-terminal text-info'} fs-5 me-2"></i>
+									<div>
+										<h6 class="mb-0 fw-bold">${service.name}</h6>
+										<small class="text-muted">PID: ${service.pid}</small>
+									</div>
+								</div>
+								<span class="badge ${protocolBadge} text-dark">${protocol}</span>
+							</div>
+							
+							<div class="mb-2">
+								<small class="text-muted d-block mb-1">Process:</small>
+								<code class="small text-truncate d-block" title="${service.process}">${service.process}</code>
+							</div>
+							
+							<div class="mb-2">
+								<small class="text-muted d-block mb-1">Address & Port:</small>
+								<span class="badge bg-white text-black border">${address}</span>
+							</div>
+							
+							<div class="mb-2">
+								<small class="text-muted d-block mb-1">Description:</small>
+								<small class="text-dark">${service.description}</small>
+							</div>
+							
+							<div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+								<small class="text-muted">
+									<i class="bx bx-time me-1"></i>
+									${startedDate}
+								</small>
+								<span class="badge ${service.is_service ? 'bg-success' : 'bg-secondary'} text-white">
+									${service.is_service ? 'Service' : 'Process'}
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+			`;
+			
+			$servicesList.append(serviceCard);
+		});
+	}
+</script>

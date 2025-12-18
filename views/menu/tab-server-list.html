@@ -1,0 +1,26 @@
+{{.TABLE_SERVER}}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+	function reloadTable(times) {
+		if (times <= 0) return;
+		setTimeout(function() {
+			// AJAX reload for dt_server table
+			if (window.$ && $.fn.dataTable && $('#dt_server').length) {
+				$('#dt_server').DataTable().ajax.reload(null, false);
+				reloadTable(times - 1);
+			}
+		}, 5000);
+	}
+
+	// Wait until dt_server table is visible/loaded
+	function waitForTable() {
+		if ($('#dt_server').length && $('#dt_server').is(':visible')) {
+			reloadTable(2);
+		} else {
+			setTimeout(waitForTable, 3000);
+		}
+	}
+
+	waitForTable();
+});
+</script>

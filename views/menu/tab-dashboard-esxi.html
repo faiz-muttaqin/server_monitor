@@ -1,0 +1,403 @@
+<!-- ESXi Dashboard Table -->
+<div class="card mb-4">
+	<div class="card-header d-flex flex-wrap justify-content-between gap-3">
+		<div class="card-title mb-0 me-1">
+			<h5 class="mb-1">ESXi Hosts</h5>
+			<p class="text-muted mb-0">
+				Total {{.TOTAL_ESXI}} ESXi hosts being monitored
+			</p>
+		</div>
+		<div
+			class="d-flex justify-content-md-end align-items-center gap-3 flex-wrap"
+		></div>
+	</div>
+	<div class="card-body">
+		<table
+			class="my-esxi-table cards table-sm table-hover"
+			cellspacing="0"
+			width="100%"
+		>
+			<thead class="d-none">
+				<tr>
+					<th></th>
+					<th>VMs</th>
+					<th>Action</th>
+				</tr>
+			</thead>
+		</table>
+		<script>
+			$(document).ready(function () {
+				var table = $(".my-esxi-table").DataTable({
+					ajax: "/esxi/table",
+					pageLength: 6,
+					lengthMenu: [
+						[6, 12, 24, 48, -1],
+						[6, 12, 24, 48, "All"],
+					],
+					dom:
+						'<"row mx-1"' +
+						'<"col-12 col-md-6 d-flex align-items-center justify-content-center justify-content-md-start gap-3"l<"dt-action-buttons text-xl-end text-lg-start text-md-end text-start mt-md-0 mt-3"B>>' +
+						'<"col-12 col-md-6 d-flex align-items-center justify-content-end flex-column flex-md-row pe-3 gap-md-3"f<"invoice_status mb-3 mb-md-0">>' +
+						">t" +
+						'<"row mx-2"' +
+						'<"col-sm-12 col-md-6"i>' +
+						'<"col-sm-12 col-md-6"p>' +
+						">",
+					language: {
+						sLengthMenu: "_MENU_",
+						search: "",
+						searchPlaceholder: "Search ESXi Hosts",
+					},
+					buttons: [
+						{
+							text: '<i class="bx bx-card bx-md text-info" aria-hidden="true"></i>',
+							className: "btn",
+							action: function (e, dt, node) {
+								$(dt.table().node()).toggleClass("cards");
+								$(".bx", node).toggleClass(["bx-list-ul", "bx-card"]);
+								dt.draw("page");
+							},
+						},
+					],
+					columns: [
+						{
+							orderable: false,
+							data: null,
+							className: "text-center align-middle",
+							render: function (data, type, full, meta) {
+								const convertedID = full["id"].replaceAll(".", "_");
+								return `
+                                <div class="card-body py-2 px-0" style="max-height: 450px;">
+                                    <div class="ps-container ps-theme-default" data-ps-id="esxi-info-${convertedID}">
+                                        <div class="ps-content">
+                                            <!-- ESXi Host Header -->
+                                            <div class="d-flex align-items-center mb-3">
+                                                <i class="bx bx-server text-primary fs-4 me-2"></i>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        <span class="host_name-${convertedID}">${full['host_name'] || 'ESXi Host'}</span>
+                                                    </h6>
+                                                    <small class="text-muted">
+                                                        <span class="id-${convertedID}">${full['id'] || '-'}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="ms-auto">
+                                                    <span class="status-${convertedID} badge bg-label-${full['status'] === 'online' ? 'success' : full['status'] === 'warning' ? 'warning' : 'danger'}">
+                                                        <i class="bx bx-wifi"></i> ${full['status'] || 'unknown'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <!-- System Information -->
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="bx bx-chip text-info me-2"></i>
+                                                        <small class="text-muted">
+                                                            <span class="system_vendor-${convertedID}">${full['system_vendor'] || '-'}</span>
+                                                            <span class="system_model-${convertedID}">${full['system_model'] || '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="bx bx-microchip text-secondary me-2"></i>
+                                                        <small class="text-muted">
+                                                            <span class="cpu_model-${convertedID}">${full['cpu_model'] || '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <i class="bx bx-time-five text-warning me-2"></i>
+                                                        <small class="text-muted">
+                                                            Uptime: <span class="system_uptime_text-${convertedID}">${full['system_uptime_text'] || '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Resource Usage -->
+                                            <div class="row g-2 mb-3">
+                                                <!-- CPU Usage -->
+                                                <div class="col-6">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <i class="bx bx-chip text-success me-1"></i>
+                                                        <small>CPU:</small>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <small class="cpu_usage_percent-${convertedID}">${full['cpu_usage_percent'] ? full['cpu_usage_percent'].toFixed(1) + '%' : '-'}</small>
+                                                        <small class="text-muted">
+                                                            <span class="cpu_cores-${convertedID}">${full['cpu_cores'] || '-'}</span> cores
+                                                        </small>
+                                                    </div>
+                                                    <div class="progress" style="height: 6px;">
+                                                        <div class="progress-bar bg-success cpu_usage_percent-${convertedID}"
+                                                             style="width: ${full['cpu_usage_percent'] || 0}%"
+                                                             role="progressbar"></div>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <span class="cpu_used_mhz-${convertedID}">${full['cpu_used_mhz'] || '-'}</span> / 
+                                                        <span class="cpu_total_mhz-${convertedID}">${full['cpu_total_mhz'] || '-'}</span> MHz
+                                                    </small>
+                                                </div>
+
+                                                <!-- Memory Usage -->
+                                                <div class="col-6">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <i class="bx bx-memory-card text-warning me-1"></i>
+                                                        <small>RAM:</small>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <small class="memory_usage_percent-${convertedID}">${full['memory_usage_percent'] ? full['memory_usage_percent'].toFixed(1) + '%' : '-'}</small>
+                                                        <small class="text-muted">
+                                                            <span class="memory_total_mb-${convertedID}">${full['memory_total_mb'] ? (full['memory_total_mb'] / 1024).toFixed(1) + 'GB' : '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                    <div class="progress" style="height: 6px;">
+                                                        <div class="progress-bar bg-warning memory_usage_percent-${convertedID}"
+                                                             style="width: ${full['memory_usage_percent'] || 0}%"
+                                                             role="progressbar"></div>
+                                                    </div>
+                                                    <small class="text-muted">
+                                                        <span class="memory_used_mb-${convertedID}">${full['memory_used_mb'] || '-'}</span> / 
+                                                        <span class="memory_total_mb-${convertedID}">${full['memory_total_mb'] || '-'}</span> MB
+                                                    </small>
+                                                </div>
+
+                                                <!-- Storage Usage -->
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <i class="bx bx-hdd text-info me-1"></i>
+                                                        <small>Storage:</small>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <small class="storage_total_usage_percent-${convertedID}">${full['storage_total_usage_percent'] ? full['storage_total_usage_percent'].toFixed(1) + '%' : '-'}</small>
+                                                        <small class="text-muted">
+                                                            <span class="storage_total_capacity-${convertedID}">${full['storage_total_capacity'] ? (full['storage_total_capacity'] / (1024*1024*1024*1024)).toFixed(1) + 'TB' : '-'}</span>
+                                                        </small>
+                                                    </div>
+                                                    <div class="progress" style="height: 6px;">
+                                                        <div class="progress-bar bg-info storage_total_usage_percent-${convertedID}"
+                                                             style="width: ${full['storage_total_usage_percent'] || 0}%"
+                                                             role="progressbar"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Datastores -->
+                                            ${full['storage_datastores'] && full['storage_datastores'].length > 0 ? `
+                                            <div class="mb-3">
+                                                <h6 class="text-muted mb-2">
+                                                    <i class="bx bx-data me-1"></i>Datastores
+                                                </h6>
+                                                ${full['storage_datastores'].map((ds, index) => `
+                                                    <div class="border rounded p-2 mb-2">
+                                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                                            <small class="fw-bold">${ds.name || 'Datastore'}</small>
+                                                            <small class="text-muted">${ds.usage_percent ? ds.usage_percent.toFixed(1) + '%' : '-'}</small>
+                                                        </div>
+                                                        <div class="progress" style="height: 4px;">
+                                                            <div class="progress-bar bg-primary"
+                                                                 style="width: ${ds.usage_percent || 0}%"
+                                                                 role="progressbar"></div>
+                                                        </div>
+                                                        <small class="text-muted">
+                                                            ${ds.capacity ? (ds.capacity / (1024*1024*1024)).toFixed(1) + 'GB' : '-'}
+                                                        </small>
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                            ` : ''}
+
+                                            <!-- Connection Status -->
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <small class="text-muted">
+                                                        <i class="bx bx-link me-1"></i>
+                                                        <span class="host_connection_state-${convertedID}">${full['host_connection_state'] || '-'}</span>
+                                                    </small>
+                                                </div>
+                                                <div class="col-6">
+                                                    <small class="text-muted">
+                                                        <i class="bx bx-health me-1"></i>
+                                                        <span class="host_overall_status-${convertedID}">${full['host_overall_status'] || '-'}</span>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>`;
+							},
+						},
+						{
+							data: "vms_info",
+							className: "align-middle",
+							render: function (data, type, full, meta) {
+								const convertedID = full["id"].replaceAll(".", "_");
+								const vmsInfo = full['vms_info'] || [];
+								
+								return `
+                                <div class="card-body py-2 px-0">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <h6 class="mb-0">
+                                            <i class="bx bx-devices text-primary me-1"></i>
+                                            Virtual Machines (${vmsInfo.length})
+                                        </h6>
+                                        <small class="text-muted">
+                                            <i class="bx bx-time me-1"></i>
+                                            <span class="timestamp-${convertedID}">${full['timestamp'] ? new Date(full['timestamp']).toLocaleString() : '-'}</span>
+                                        </small>
+                                    </div>
+                                    
+                                    ${vmsInfo.length > 0 ? `
+                                    <div class="ps-container ps-theme-default" data-ps-id="vms-list-${convertedID}" style="max-height: 400px;">
+                                        <div class="ps-content">
+                                            <div class="d-flex flex-nowrap" style="gap: 12px; overflow-x: auto; padding-bottom: 10px;">
+                                                ${vmsInfo.map((vm, index) => `
+                                                    <div class="flex-shrink-0 border rounded p-3" style="min-width: 280px; max-width: 300px;">
+                                                        <!-- VM Header -->
+                                                        <div class="d-flex align-items-start justify-content-between mb-2">
+                                                            <div class="flex-grow-1">
+                                                                <h6 class="mb-1 text-truncate" title="${vm.name || 'Unknown VM'}">
+                                                                    <i class="bx bx-desktop me-1"></i>
+                                                                    ${(vm.name || 'Unknown VM').length > 20 ? (vm.name || 'Unknown VM').substring(0, 20) + '...' : (vm.name || 'Unknown VM')}
+                                                                </h6>
+                                                                <small class="text-muted text-truncate d-block" title="${vm.uuid || ''}">
+                                                                    <span class="uuid-${convertedID}-${index}">${vm.uuid ? vm.uuid.substring(0, 8) + '...' : '-'}</span>
+                                                                </small>
+                                                            </div>
+                                                            <span class="badge ms-2 ${vm.power_state === 'poweredOn' ? 'bg-success' : vm.power_state === 'poweredOff' ? 'bg-danger' : 'bg-warning'}">
+                                                                <i class="bx ${vm.power_state === 'poweredOn' ? 'bx-power' : 'bx-power-off'} me-1"></i>
+                                                                <span class="power_state-${convertedID}-${index}">${vm.power_state || 'unknown'}</span>
+                                                            </span>
+                                                        </div>
+                                                        
+                                                        <!-- VM Resources -->
+                                                        <div class="row g-2 mb-2">
+                                                            <!-- CPU -->
+                                                            <div class="col-6">
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <i class="bx bx-chip text-success me-1" style="font-size: 12px;"></i>
+                                                                    <small>CPU</small>
+                                                                </div>
+                                                                <small class="d-block">
+                                                                    <span class="cpu_cores-${convertedID}-${index}">${vm.cpu_cores || 0}</span> cores
+                                                                </small>
+                                                                <small class="text-muted">
+                                                                    <span class="cpu_usage_mhz-${convertedID}-${index}">${vm.cpu_usage_mhz || 0}</span> MHz
+                                                                </small>
+                                                            </div>
+                                                            
+                                                            <!-- Memory -->
+                                                            <div class="col-6">
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <i class="bx bx-memory-card text-warning me-1" style="font-size: 12px;"></i>
+                                                                    <small>RAM</small>
+                                                                </div>
+                                                                <small class="d-block">
+                                                                    <span class="memory_mb-${convertedID}-${index}">${vm.memory_mb ? (vm.memory_mb / 1024).toFixed(1) + 'GB' : '0GB'}</span>
+                                                                </small>
+                                                                <div class="progress mt-1" style="height: 4px;">
+                                                                    <div class="progress-bar bg-warning memory_usage_percent-${convertedID}-${index}" 
+                                                                         style="width: ${vm.memory_usage_percent || 0}%" 
+                                                                         role="progressbar"></div>
+                                                                </div>
+                                                                <small class="text-muted">
+                                                                    <span class="memory_usage_percent-${convertedID}-${index}">${vm.memory_usage_percent ? vm.memory_usage_percent.toFixed(1) + '%' : '0%'}</span>
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <!-- IP Addresses -->
+                                                        ${vm.ips && vm.ips.length > 0 ? `
+                                                        <div class="mb-2">
+                                                            <div class="d-flex align-items-center mb-1">
+                                                                <i class="bx bx-network-chart text-info me-1" style="font-size: 12px;"></i>
+                                                                <small>IP Addresses</small>
+                                                            </div>
+                                                            <div class="d-flex flex-wrap gap-1">
+                                                                ${vm.ips.slice(0, 2).map((ip, ipIndex) => `
+                                                                    <span class="badge bg-light text-dark text-truncate ips-${convertedID}-${index}-${ipIndex}" style="max-width: 120px; font-size: 10px;" title="${ip}">
+                                                                        ${ip.length > 15 ? ip.substring(0, 15) + '...' : ip}
+                                                                    </span>
+                                                                `).join('')}
+                                                                ${vm.ips.length > 2 ? `<span class="badge bg-secondary" style="font-size: 10px;">+${vm.ips.length - 2}</span>` : ''}
+                                                            </div>
+                                                        </div>
+                                                        ` : `
+                                                        <div class="mb-2">
+                                                            <small class="text-muted">
+                                                                <i class="bx bx-network-chart me-1"></i>
+                                                                No IP assigned
+                                                            </small>
+                                                        </div>
+                                                        `}
+                                                    </div>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : `
+                                    <div class="text-center py-4">
+                                        <i class="bx bx-desktop text-muted" style="font-size: 48px;"></i>
+                                        <div class="text-muted mt-2">No virtual machines found</div>
+                                    </div>
+                                    `}
+                                </div>`;
+							},
+						},
+					],
+					drawCallback: function (settings) {
+						var api = this.api();
+						var $table = $(api.table().node());
+						if ($table.hasClass("cards")) {
+							$table.find("tbody").addClass("row gy-5 my-2");
+							$table.find("tbody tr").addClass("col-sm-6 col-lg-12 p-2 my-0");
+							$table.find("tbody tr").each(function () {
+								if ($(this).children(".card-deck").length === 0) {
+									$(this).children("td").wrapAll('<div class="card-deck d-flex flex-column border rounded h-100"></div>');
+								}
+							});
+							var labels = [];
+							$("thead th", $table).each(function () {
+								labels.push($(this).text());
+							});
+							$("tbody tr", $table).each(function () {
+								$(this).find("td").each(function (column) {
+									$(this).attr("data-label", labels[column]);
+								});
+							});
+							$("tbody tr", $table).each(function () {
+								$(this).height("auto");
+							});
+						} else {
+							$table.find("tbody").removeClass("row gy-4 mb-4");
+							$table.find("tbody tr").removeClass("col-sm-6 col-lg-12 p-2 my-0");
+							$table.find(".card-deck").children("td").unwrap();
+							$("tbody td", $table).each(function () {
+								$(this).removeAttr("data-label");
+							});
+							$("tbody tr", $table).each(function () {
+								$(this).height("auto");
+							});
+						}
+						
+						// Initialize Perfect Scrollbar
+						setTimeout(function() {
+							$('.ps-container').each(function() {
+								const ps = new PerfectScrollbar(this, {
+									wheelSpeed: 2,
+									wheelPropagation: true,
+									minScrollbarLength: 20,
+									suppressScrollX: false,
+									suppressScrollY: false
+								});
+							});
+						}, 100);
+					},
+				});
+			});
+		</script>
+	</div>
+</div>

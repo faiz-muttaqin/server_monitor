@@ -1,0 +1,38 @@
+<div class="row align-items-center">
+	<img
+		src="${full['logo'] || '/assets/self/img/ubuntu.svg'}"
+		class="col-sm-3 img-fluid rounded pe-sm-0"
+		style="object-fit: cover"
+	/>
+	<div class="col-sm-9 d-flex flex-column align-items-start ps-sm-0">
+		<div class="text-muted small mb-1">
+			<i class="bx bx-desktop"></i> ${full['os'] || '-'} ${full['os_version']
+			||''} ${full['is_self'] ? '
+			<i class="bx bxs-star text-warning me-2" title="This is your server"></i>'
+			: ""}
+		</div>
+		<div class="text-muted small mb-1">
+			<i class="bx bx-chip"></i> ${full['architecture'] || "-"}
+		</div>
+		<div class="text-muted small mb-1">
+			<i class="bx bx-microchip"></i>${full['cpu_model'] || "-"}
+		</div>
+		<div class="text-muted small mb-1">
+			<i class="bx bx-cog"></i> Kernel: ${full['kernel_version'] || "-"}
+		</div>
+		<div class="text-muted small mb-1">
+			<i class="bx bx-time-five"></i> Uptime:
+			<span
+				class="ago-ticker uptime_since-${convertedID}"
+				data-since="${full['uptime_since']}"
+			>
+			</span>
+		</div>
+		<div class="text-muted small mb-1">
+			<i class="fa fa-thermometer-half"></i>
+			<span class="temperature-${convertedID}"></span>
+				${full['temperature'] ? full['temperature'] + '°C' : '-'}
+			</span>
+		</div>
+	</div>
+</div>

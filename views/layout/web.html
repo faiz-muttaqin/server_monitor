@@ -1,0 +1,2195 @@
+<!DOCTYPE html>
+
+<html lang="id" class="light-style layout-navbar-fixed layout-menu-fixed layout-compact" dir="ltr" data-theme="theme-default" data-assets-path="{{.BASE_URL_PATH}}/assets/" data-access-path="{{.ACCESS}}" data-template="vertical-menu-template">
+
+<head>
+    <script>
+      let wsProtocol = "ws:";
+      if (window.location.protocol === "https:") {
+        wsProtocol = "wss:";
+      }
+      const socketUrl = `${wsProtocol}//${window.location.host}/ws`;
+      let currentSocket = null;
+      let retryCount = 0;
+      const maxTotalRetries = 20;
+      const maxImmediateRetries = 3;
+      const retryDelay = 5000; // 5 seconds
+
+      function connectWebSocket(callback) {
+        const socket = new WebSocket(socketUrl);
+
+        socket.addEventListener("open", (event) => {
+          console.log("WebSocket connection established");
+          currentSocket = socket;
+          retryCount = 0; // Reset retry count on success
+          if (callback) {
+            callback(currentSocket);
+          }
+        });
+
+        socket.addEventListener("close", (event) => {
+          console.log("WebSocket connection closed");
+
+          retryCount++;
+          if (retryCount >= maxTotalRetries) {
+            console.warn(
+              `Max retries (${maxTotalRetries}) reached. Reloading page...`
+            );
+            setTimeout(() => {
+              location.reload(); // ⟳ Reload page
+            }, retryDelay); // Optional delay before reload
+            return;
+          }
+
+          if (
+            event.code === 1006 ||
+            event.code === 1001 ||
+            event.code === 1000
+          ) {
+            const delay = retryCount > maxImmediateRetries ? retryDelay : 1000;
+            console.log(
+              `Attempting reconnect #${retryCount} in ${delay / 1000}s`
+            );
+
+            setTimeout(() => {
+              connectWebSocket(callback);
+            }, delay);
+          }
+        });
+        socket.addEventListener("message", (event) => {
+        //   console.log("Received message:", event.data);
+          if (event.data == "logout") {
+            window.location.reload();
+          }
+          if (event.data.startsWith("esxi:")) {
+            const serverData = event.data.replace("esxi:", "");
+            // console.log("esxi data received:", serverData);
+            serverData.split(';;').forEach( item => {
+                    if (!item.trim()) return; // skip kosong
+                    const [field, value] = item.split('::');
+                    if (!field || value === undefined) return; // skip invalid pair
+                    const element = document.getElementsByClassName(field);
+                    Array.from(element).forEach((el) => {
+                        // console.log(`Updating ${field} to ${value}`);
+                        // console.log("el");
+                        // console.log(el);
+                        if (el.getAttribute("role") === "progressbar") {
+                            el.style.width = value + "%";
+                            el.setAttribute("aria-valuenow", value + "%");
+                        } else if (el.getAttribute("data-since")) {
+                            el.setAttribute("data-since", value);
+                        } else {
+                            if (field.startsWith("status-")) {
+                                // console.log("status field detected");
+                                el.classList.remove("bg-label-success", "bg-label-danger", "bg-label-warning", "bg-label-secondary");
+                                if (value === "online") {
+                                    el.classList.add("bg-label-success");
+                                } else if (value === "offline") {
+                                    el.classList.add("bg-label-danger");
+                                } else if (value === "warning") {
+                                    el.classList.add("bg-label-warning");
+                                } else {
+                                    el.classList.add("bg-label-secondary");
+                                }
+                                el.innerHTML = `<i class="bx bx-wifi"></i> `+value;
+                            } else {
+                                el.innerHTML = value;
+                            }
+                        }
+                    });
+                }
+            );
+          }
+          if (event.data.startsWith("server:")) {
+            const serverData = event.data.replace("server:", "");
+            serverData.split(';;').forEach( item => {
+                    if (!item.trim()) return; // skip kosong
+                    const [field, value] = item.split('::');
+                    if (!field || value === undefined) return; // skip invalid pair
+                    const element = document.getElementsByClassName(field);
+                    Array.from(element).forEach((el) => {
+                        // console.log(`Updating ${field} to ${value}`);
+                        // console.log("el");
+                        // console.log(el);
+                        if (el.getAttribute("role") === "progressbar") {
+                            el.style.width = value + "%";
+                            el.setAttribute("aria-valuenow", value + "%");
+                        } else if (el.getAttribute("data-since")) {
+                            el.setAttribute("data-since", value);
+                        } else {
+                            if (field.startsWith("status-")) {
+                                // console.log("status field detected");
+                                el.classList.remove("bg-label-success", "bg-label-danger", "bg-label-warning", "bg-label-secondary");
+                                if (value === "online") {
+                                    el.classList.add("bg-label-success");
+                                } else if (value === "offline") {
+                                    el.classList.add("bg-label-danger");
+                                } else if (value === "warning") {
+                                    el.classList.add("bg-label-warning");
+                                } else {
+                                    el.classList.add("bg-label-secondary");
+                                }
+                                el.innerHTML = `<i class="bx bx-wifi"></i> `+value;
+                            } else {
+                                el.innerHTML = value;
+                            }
+                        }
+                    });
+                }
+            );
+          }
+          
+        });
+
+        return { socket };
+      }
+
+      // Initial connection
+      connectWebSocket((socket) => {
+        console.log("socket connected");
+      });
+    </script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+
+    <title>{{.APP_NAME}}</title>
+
+    <meta name="description" content="" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{.APP_LOGO}}" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet" />
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/fonts/boxicons.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/fonts/fontawesome.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/fonts/flag-icons.css" />
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/css/rtl/core.css" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/css/rtl/theme-default.css" class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/css/demo.css" />
+
+    <!-- Vendors CSS -->
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/apex-charts/apex-charts.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/typeahead-js/typeahead.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/select2/select2.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/@form-validation/umd/styles/index.min.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/quill/typography.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/quill/katex.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/quill/editor.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/dropzone/dropzone.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/flatpickr/flatpickr.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/bootstrap-datepicker/bootstrap-datepicker.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/bootstrap-daterangepicker/bootstrap-daterangepicker.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/jquery-timepicker/jquery-timepicker.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/pickr/pickr-themes.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/tagify/tagify.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/sweetalert2/sweetalert2.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/animate-css/animate.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/libs/nouislider/nouislider.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/css/pages/card-analytics.css" />
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/vendor/css/pages/page-misc.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="{{.BASE_URL_PATH}}/assets/self/style.css" />
+
+    <!-- Helpers -->
+    <script src="{{.BASE_URL_PATH}}/assets/vendor/js/helpers.js"></script>
+    <!--! Template customizer & Theme config files MUST be included after core stylesheets and helpers.js in the <head> section -->
+    <!--? Template customizer: To hide customizer set displayCustomizer value false in config.js.  -->
+    <script src="{{.BASE_URL_PATH}}/assets/vendor/js/template-customizer.js"></script>
+    <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+    <script src="{{.BASE_URL_PATH}}/assets/js/config.js"></script>
+    <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/jquery/jquery.js"></script>
+    <script src="{{.BASE_URL_PATH}}/assets/vendor/js/bootstrap.js"></script>
+    <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/bootstrap-select/bootstrap-select.js"></script>
+    <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/typeahead-js/typeahead.js"></script>
+    <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/bloodhound/bloodhound.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+    <script src="{{.BASE_URL_PATH}}/assets/self/function.js?_=j"></script>
+    <style>
+        .server-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body class="loading_background">
+    <!-- Layout wrapper -->
+    <div class="layout-wrapper layout-content-navbar">
+        <div class="layout-container">
+            <!-- Menu -->
+
+            <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+                <div class="app-brand demo d-flex">
+                    {{if .APP_LOGO_ONLY }}
+                    <a href="{{.BASE_URL_PATH}}" class="d-flex flex-row align-items-center mb-2" style="margin-left: 48px;">
+                        <div class="server-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <!-- <span class="app-brand-logo demo">
+                            <img src="{{.APP_LOGO}}" width="100px" height="auto" class="move-left rounded" alt="Logo1" />
+                        </span> -->
+                    </a>
+                    {{else}}
+                    <a href="{{.BASE_URL_PATH}}" class="d-flex flex-row align-items-center mb-2" style="margin-left: 48px;">
+                        <!-- <span class="app-brand-logo demo">
+                            <img src="{{.APP_LOGO}}" width="50px" height="auto" class="move-left rounded" alt="Logo1" />
+                        </span> -->
+                        <div class="server-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <h4 class="demo menu-text fw-bold ms-2 mt-3">{{.APP_NAME}}</h4>
+                    </a>
+                    {{end}}
+
+                    <a href="" class="layout-menu-toggle text-large ms-auto">
+                        <i class="bx bx-chevron-left bx-sm align-middle"></i>
+                    </a>
+                </div>
+
+                <div class="menu-inner-shadow"></div>
+
+                <ul id="mainPageSidebar" class="menu-inner py-1">
+                    {{.sidebar}}
+                </ul>
+            </aside>
+            <!-- / Menu -->
+
+            <!-- Layout container -->
+            <div class="layout-page" style="padding-top:55px !important;">
+                <!-- Navbar -->
+                <!-- bg-navbar-theme -->
+                <nav class="layout-navbar navbar navbar-expand-xl align-items-center d-flex justify-content-between px-3" id="layout-navbar">
+                    <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
+                        <a class="nav-item nav-link px-0 me-xl-4" href="javascript:void(0)">
+                            <i class="bx bx-menu bx-sm"></i>
+                        </a>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="bx bx-time-five me-2 fs-4 text-primary"></i>
+                        <div>
+                            <span id="current-time" class="fw-bold"></span>
+                            <br>
+                            <span id="current-date" class="text-muted small"></span>
+                        </div>
+                        <script>
+                            // Supported languages and their locale/timezone
+                            const langConfig = {
+                                id: { locale: 'id-ID', tz: 'Asia/Jakarta', gmt: 'GMT+7' },
+                                en: { locale: 'en-US', tz: 'Asia/Jakarta', gmt: 'GMT+7' },
+                                fr: { locale: 'fr-FR', tz: 'Asia/Jakarta', gmt: 'GMT+7' },
+                                jp: { locale: 'ja-JP', tz: 'Asia/Tokyo', gmt: 'GMT+9' }
+                            };
+                            let currentLang = 'id'; // default
+
+                            function updateCurrentTime() {
+                                const now = new Date();
+                                const config = langConfig[currentLang] || langConfig['id'];
+                                // Format time
+                                const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: config.tz };
+                                const timeStr = now.toLocaleTimeString(config.locale, timeOptions) + ' ' + config.gmt;
+                                // Format date
+                                const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: '2-digit', timeZone: config.tz };
+                                const dateStr = now.toLocaleDateString(config.locale, dateOptions);
+                                document.getElementById('current-time').textContent = timeStr;
+                                document.getElementById('current-date').textContent = dateStr;
+                            }
+                            setInterval(updateCurrentTime, 1000);
+                            updateCurrentTime();
+
+                            // Listen for language change
+                            $(document).ready(function() {
+                                document.querySelectorAll('[data-language]').forEach(function(el) {
+                                    el.addEventListener('click', function() {
+                                        const lang = el.getAttribute('data-language');
+                                        if (langConfig[lang]) {
+                                            currentLang = lang;
+                                            updateCurrentTime();
+                                        }
+                                    });
+                                });
+                            });
+                        </script>
+                    </div>
+                    <div class="d-flex align-items-center bd-highlight ms-auto" id="navbar-collapse">
+                        <!-- Search -->
+                        <!-- <div class="navbar-nav align-items-center">
+                          <div class="nav-item navbar-search-wrapper mb-0">
+                            <a class="nav-item nav-link search-toggler px-0" href="javascript:void(0);">
+                              <i class="bx bx-search bx-sm"></i>
+                              <span class="d-none d-md-inline-block text-muted">Search (Ctrl+/)</span>
+                            </a>
+                          </div>
+                        </div> -->
+                        <!-- /Search -->
+
+                        <ul class="navbar-nav flex-row align-items-center ms-auto">
+                            <!-- Tour -->
+                            <!-- <li class="nav-item dropdown-shortcuts navbar-dropdown dropdown me-2 me-xl-0">
+                  <a
+                    class="nav-link dropdown-toggle hide-arrow"
+                    href="javascript:void(0);"
+                    data-bs-auto-close="outside"
+                    aria-expanded="false"
+                    data-bs-toggle="tooltip"
+                    data-bs-offset="0,4"
+                    data-bs-placement="bottom"
+                    data-bs-html="true"
+                    title="Start Tour"
+                    >
+                    <i class="bx bx-info-circle bx-sm"></i>
+                  </a>
+                </li> -->
+                            <!-- /Tour -->
+
+                            <!-- Language -->
+                            <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
+                                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
+                                    <i class="bx bx-globe bx-sm" data-bs-auto-close="outside" aria-expanded="false" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="bottom" data-bs-html="true" title="Language"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" data-language="id">
+                                            <span class="align-middle">Indonesia</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" data-language="en">
+                                            <span class="align-middle">English</span>
+                                        </a>
+                                    </li>
+                                    <!-- <li>
+                      <a class="dropdown-item" href="javascript:void(0);" data-language="fr">
+                        <span class="align-middle">French</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);" data-language="de">
+                        <span class="align-middle">German</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item" href="javascript:void(0);" data-language="pt">
+                        <span class="align-middle">Portuguese</span>
+                      </a>
+                    </li> -->
+                                </ul>
+                            </li>
+                            <!-- /Language -->
+
+
+                            <!-- Style Switcher -->
+                            <li class="nav-item dropdown-style-switcher dropdown me-2 me-xl-0">
+                                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
+                                    <i class="bx bx-sm"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end dropdown-styles">
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" data-theme="light">
+                                            <span class="align-middle"><i class="bx bx-sun me-2"></i>Light</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" data-theme="dark">
+                                            <span class="align-middle"><i class="bx bx-moon me-2"></i>Dark</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="javascript:void(0);" data-theme="system">
+                                            <span class="align-middle"><i class="bx bx-desktop me-2"></i>System</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                            <!-- / Style Switcher-->
+
+                            <!-- Notification -->
+                            <!-- <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
+                  <a
+                    class="nav-link dropdown-toggle hide-arrow"
+                    href="javascript:void(0);"
+                    data-bs-toggle="dropdown"
+                    data-bs-auto-close="outside"
+                    aria-expanded="false">
+                    <i class="bx bx-bell bx-sm"></i>
+                    <span class="badge bg-danger rounded-pill badge-notifications">5</span>
+                  </a>
+                  <ul class="dropdown-menu dropdown-menu-end py-0">
+                    <li class="dropdown-menu-header border-bottom">
+                      <div class="dropdown-header d-flex align-items-center py-3">
+                        <h5 class="text-body mb-0 me-auto">Notification</h5>
+                        <a
+                          href="javascript:void(0)"
+                          class="dropdown-notifications-all text-body"
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="top"
+                          title="Mark all as read"
+                          ><i class="bx fs-4 bx-envelope-open"></i
+                        ></a>
+                      </div>
+                    </li>
+                    <li class="dropdown-notifications-list scrollable-container">
+                      <ul class="list-group list-group-flush">
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <img src="{{.BASE_URL_PATH}}/assets/img/avatars/1.png" alt class="w-px-40 h-auto rounded-circle" />
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">Congratulation Lettie 🎉</h6>
+                              <p class="mb-0">Won the monthly best seller gold badge</p>
+                              <small class="text-muted">1h ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <span class="avatar-initial rounded-circle bg-label-danger">CF</span>
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">Charles Franklin</h6>
+                              <p class="mb-0">Accepted your connection</p>
+                              <small class="text-muted">12hr ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <img src="{{.BASE_URL_PATH}}/assets/img/avatars/2.png" alt class="w-px-40 h-auto rounded-circle" />
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">New Message ✉️</h6>
+                              <p class="mb-0">You have new message from Natalie</p>
+                              <small class="text-muted">1h ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <span class="avatar-initial rounded-circle bg-label-success"
+                                  ><i class="bx bx-cart"></i
+                                ></span>
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">Whoo! You have new order 🛒</h6>
+                              <p class="mb-0">ACME Inc. made new order $1,154</p>
+                              <small class="text-muted">1 day ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <img src="{{.BASE_URL_PATH}}/assets/img/avatars/9.png" alt class="w-px-40 h-auto rounded-circle" />
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">Application has been approved 🚀</h6>
+                              <p class="mb-0">Your ABC project application has been approved.</p>
+                              <small class="text-muted">2 days ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <span class="avatar-initial rounded-circle bg-label-success"
+                                  ><i class="bx bx-pie-chart-alt"></i
+                                ></span>
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">Monthly report is generated</h6>
+                              <p class="mb-0">July monthly financial report is generated</p>
+                              <small class="text-muted">3 days ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <img src="{{.BASE_URL_PATH}}/assets/img/avatars/5.png" alt class="w-px-40 h-auto rounded-circle" />
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">Send connection request</h6>
+                              <p class="mb-0">Peter sent you connection request</p>
+                              <small class="text-muted">4 days ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <img src="{{.BASE_URL_PATH}}/assets/img/avatars/6.png" alt class="w-px-40 h-auto rounded-circle" />
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">New message from Jane</h6>
+                              <p class="mb-0">Your have new message from Jane</p>
+                              <small class="text-muted">5 days ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                        <li class="list-group-item list-group-item-action dropdown-notifications-item marked-as-read">
+                          <div class="d-flex">
+                            <div class="flex-shrink-0 me-3">
+                              <div class="avatar">
+                                <span class="avatar-initial rounded-circle bg-label-warning"
+                                  ><i class="bx bx-error"></i
+                                ></span>
+                              </div>
+                            </div>
+                            <div class="flex-grow-1">
+                              <h6 class="mb-1">CPU is running high</h6>
+                              <p class="mb-0">CPU Utilization Percent is currently at 88.63%,</p>
+                              <small class="text-muted">5 days ago</small>
+                            </div>
+                            <div class="flex-shrink-0 dropdown-notifications-actions">
+                              <a href="javascript:void(0)" class="dropdown-notifications-read"
+                                ><span class="badge badge-dot"></span
+                              ></a>
+                              <a href="javascript:void(0)" class="dropdown-notifications-archive"
+                                ><span class="bx bx-x"></span
+                              ></a>
+                            </div>
+                          </div>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="dropdown-menu-footer border-top p-3">
+                      <button class="btn btn-primary text-uppercase w-100">view all notifications</button>
+                    </li>
+                  </ul>
+                </li> -->
+                            <!--/ Notification -->
+                            <!-- User -->
+                            <li class="nav-item navbar-dropdown dropdown-user dropdown">
+                                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
+                                    <div class="avatar avatar-online mainAvatar">
+                                        <img src="https://ui-avatars.com/api/?name={{.username}}&background=random" alt class="avatar-image  rounded-circle" />
+                                    </div>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item menu-link" href="#tab-m-user-profile">
+                                            <div class="d-flex">
+                                                <div class="flex-shrink-0 me-3">
+                                                    <div class="avatar avatar-online mainAvatar" alt class=" rounded-circle">
+                                                        <img src="{{.profile_image}}" alt class="avatar-image rounded-circle" />
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <span class="fw-medium d-block" id="user-admin-name">{{.username}}</span>
+                                                    <small class="text-muted">{{.role}}</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <div class="dropdown-divider"></div>
+                                    </li>
+                                    <!-- <li>
+                                        <a class="dropdown-item menu-link" href="#tab-m-user-profile">
+                                            <i class="bx bxs-user-detail me-2"></i>
+                                            <span class="align-middle">Profile</span>
+                                        </a>
+                                    </li> -->
+                                    <li>
+                                        <button class="dropdown-item" onclick="fetch('{{.BASE_URL_PATH}}/login', { method: 'DELETE' })
+                                        .then(response => { if (response.ok) { window.location.reload();}})">
+                                            <i class="bx bx-power-off me-2"></i>
+                                            <span class="align-middle">Log Out</span>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </li>
+                            <!--/ User -->
+                        </ul>
+                    </div>
+
+                    <!-- Search Small Screens -->
+                    <div class="navbar-search-wrapper search-input-wrapper d-none">
+                        <input type="text" class="form-control search-input container-xxl border-0" placeholder="Search..." aria-label="Search..." />
+                        <i class="bx bx-x bx-sm search-toggler cursor-pointer"></i>
+                    </div>
+                </nav>
+
+                <!-- / Navbar -->
+
+                <!-- Content wrapper -->
+                <!-- class="content-wrapper" -->
+                <div>
+
+                    <!-- Debug Container -->
+                    <div id="debug-container" class="tab-content container-xxl flex-grow-1">
+                        {{ .debug }}
+                    </div>
+                    <!-- Debug Container -->
+                    <!-- Loading Container -->
+                    <div id="loading-container" class="tab-content container-xxl flex-grow-1 container-p-y">
+                        {{ template "loading_infinity_theme"}}
+                    </div>
+                    <!-- Loading Container -->
+                    <!-- Error Container -->
+                    <div id="error-container" class="tab-content container-xxl container-p-y " style="display: none;">
+                        <div class="d-flex flex-column justify-content-center align-items-center h-100 w-100">
+                            <div class="misc-wrapper">
+                                <h1 class="mb-2 mx-2">404</h1>
+                                <h2 class="mb-2 mx-2">Page Not Found :(</h2>
+                                <p class="mb-4 mx-2">Oops! 😖 The requested Page was not found on this server.</p>
+                                <a href="/page" class="menu-link btn btn-primary">Back to home</a>
+                                <div class="mt-3">
+                                    <img src="{{.BASE_URL_PATH}}/assets/img/illustrations/page-misc-error-light.png" alt="page-misc-error-light" width="500" class="img-fluid" data-app-dark-img="illustrations/page-misc-error-dark.png" data-app-light-img="illustrations/page-misc-error-light.png"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Content -->
+                    {{.contents}}
+                    <!-- / Content -->
+
+                    <!-- Footer -->
+                    <footer class="content-footer footer" style="background-color: #ffffff1d;">
+                        <div class="container-xxl d-flex flex-wrap justify-content-between py-2 flex-md-row flex-column">
+                            <div class="mb-2 mb-md-0">
+                                ©
+                                <script>
+                                    document.write(new Date().getFullYear());
+                                </script>
+                                by Faiz Muttaqin, {{.APP_NAME }} v{{.APP_VERSION}}
+                                
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span id="connected_to_master" style="width:12px;height:12px;border-radius:50%;display:inline-block;background-color:#d3d3d3;margin-right:8px;"></span>
+                                <h6 class="text-muted mb-0 small">{{.MASTER_HOST}}</h6>
+                            </div>
+                            <script>
+                                // WebSocket status update for master host connection
+                                function updateMasterConnection(status) {
+                                    const el = document.getElementById('connected_to_master');
+                                    if (!el) return;
+                                    if (status === 'connected') {
+                                        el.style.backgroundColor = '#28a745'; // green
+                                    } else if (status === 'disconnected') {
+                                        el.style.backgroundColor = '#dc3545'; // red
+                                    } else {
+                                        el.style.backgroundColor = '#d3d3d3'; // default/unknown
+                                    }
+                                }
+
+                                // Listen for WebSocket messages
+                                if (window.currentSocket) {
+                                    window.currentSocket.addEventListener('message', function(event) {
+                                        if (event.data === 'master_connected') {
+                                            updateMasterConnection('connected');
+                                        } else if (event.data === 'master_disconnected') {
+                                            updateMasterConnection('disconnected');
+                                        }
+                                    });
+                                }
+                                // Optionally, set initial status to unknown
+                                updateMasterConnection('{{ if .connected_to_master }}connected{{ else }}disconnected{{ end }}');
+                            </script>
+                        </div>
+                    </footer>
+                    <!-- / Footer -->
+                    <script>
+                        function loadAndShowTab(targetTabId) {
+                            console.log("Loading tab:", targetTabId);
+                            if (targetTabId.substring(1) == "debug") {
+                                $("#loading-container").removeClass("d-block").addClass("d-none");
+                                $("#loading-container").hide();
+                                $("body").removeClass("loading_background");
+                                $("#debug-container").removeClass("d-none").addClass("d-block");
+                                return;
+                            }
+                            if (targetTabId.indexOf("#") >= 0) {
+                                console.log("Loading tab with #:", targetTabId);
+                                $(".tab-content").removeClass("d-block").addClass("d-none");
+                                if ($(targetTabId).children().length > 0) {
+                                    console.log("Tab content already loaded for:", targetTabId);
+                                    $(targetTabId).removeClass("d-none").addClass("d-block");
+                                } else {
+                                    // console.log("Fetching content for tab:", targetTabId);
+                                    var isTabValid =
+                                        $(".menu-link:not(.menu-toggle)").filter(function () {
+                                            return $(this).attr("href") === targetTabId;
+                                        }).length > 0;
+                                    if (isTabValid) {
+                                        console.log("Valid tab. Fetching content for:", targetTabId);
+                                        $("#loading-container").removeClass("d-none").addClass("d-block");
+                                        fetch(document.documentElement.getAttribute("data-access-path") + "components/" + targetTabId.substring(1))
+                                            .then((response) => {
+                                                if (response.status != 200) {
+                                                    // window.location.reload();
+                                                }
+                                                return response.text();
+                                            })
+                                            .then((html) => {
+                                                if (html.includes("</html>")) {
+                                                    // window.location.reload();
+                                                    return;
+                                                }
+                                                $("#loading-container").removeClass("d-block").addClass("d-none");
+                                                $("body").removeClass("loading_background");
+
+                                                $(targetTabId).html(html);
+                                                // $(targetTabId).show();
+                                                $(targetTabId).removeClass("d-none").addClass("d-block");
+                                                if (html == "" || html == null) {
+                                                    // $("#error-container").show();
+                                                    $("#error-container").removeClass("d-none").addClass("d-block");
+                                                }
+                                                var targetAnchor = $(
+                                                    'a[href="' + targetTabId + '"].menu-link:not(.menu-toggle)'
+                                                );
+                                                targetAnchor.addClass("active");
+                                                // Remove 'active' class from all menu items within the same menu-sub
+                                                targetAnchor
+                                                    .closest(".menu-inner")
+                                                    .find(".menu-item")
+                                                    .removeClass("active");
+
+                                                // Add 'active' class to the clicked menu item
+                                                targetAnchor.closest(".menu-item").addClass("active");
+
+                                                // Set parent menu-item with 'active' class
+                                                targetAnchor
+                                                    .closest(".menu-item")
+                                                    .parents(".menu-item")
+                                                    .addClass("active");
+                                            })
+                                            .catch((error) => {
+                                                console.log("Error fetching content:", error);
+                                                $("#loading-container").removeClass("d-block").addClass("d-none");
+                                                $("body").removeClass("loading_background");
+                                                $("#error-container").removeClass("d-none").addClass("d-block");
+                                            })
+                                            .finally(() => {
+                                                window.location.hash = targetTabId;
+                                            });
+                                    } else {
+                                        $("#loading-container").removeClass("d-block").addClass("d-none");
+                                        $("#error-container").removeClass("d-none").addClass("d-block");
+                                        $("body").removeClass("loading_background");
+                                    }
+                                }
+                            } else {
+                                // Handle the case where targetTabId does not contain #
+                                console.log("Invalid targetTabId:", targetTabId);
+                            }
+                        }
+                        // Wait for the document to be ready
+                        var targetTabId = window.location.hash;
+
+                        if (targetTabId == null || targetTabId == "") {
+                            targetTabId = $(".menu-link:not(.menu-toggle):first").attr("href");
+                        }
+                        loadAndShowTab(targetTabId);
+
+                        // Handle tab clicks
+                        $(".menu-link:not(.menu-toggle)").click(function (e) {
+                            $(".tab-content").removeClass("d-block").addClass("d-none");
+                            $("#error-container").removeClass("d-block").addClass("d-none");
+
+                            // Get the target tab ID from the href attribute
+                            var targetTabId = $(this).attr("href");
+                            loadAndShowTab(targetTabId);
+
+                            // Remove 'active' class from all menu items within the same menu-sub
+                            $(this).closest(".menu-inner").find(".menu-item").removeClass("active");
+
+                            // Add 'active' class to the clicked menu item
+                            $(this).closest(".menu-item").addClass("active");
+
+                            // Set parent menu-item with 'active' class
+                            $(this).closest(".menu-item").parents(".menu-item").addClass("active");
+                        });
+
+                        // For Avatar badge
+                        var stateNum = Math.floor(Math.random() * 6);
+                        var states = [
+                            "success",
+                            "danger",
+                            "warning",
+                            "info",
+                            "dark",
+                            "primary",
+                            "secondary",
+                        ];
+                        var state = states[stateNum];
+
+                        //in
+                        var name = $("#user-admin-name").html(),
+                            initials = name.match(/\b\w/g) || [];
+
+                        if (
+                            $(".mainAvatar > img").attr("src") == "/assets/img/avatars/default.jpg" ||
+                            $(".mainAvatar > img").attr("src") == ""
+                        ) {
+                            initials = (
+                                (initials.shift() || "") + (initials.pop() || "")
+                            ).toUpperCase();
+                            output = `<span class="avatar-initial rounded-circle bg-label-${state}">${initials}</span>`;
+                            $(".mainAvatar").html(output);
+                        }
+
+                        // Handle browser back and forward navigation
+                        window.addEventListener("popstate", function () {
+                            var targetTabId = window.location.hash;
+
+                            if (targetTabId == null || targetTabId == "") {
+                                targetTabId = $(".menu-link:not(.menu-toggle):first").attr("href");
+                            }
+                            loadAndShowTab(targetTabId);
+                        });
+                    </script>
+                    <div class="content-backdrop fade"></div>
+                </div>
+                <!-- Content wrapper -->
+            </div>
+            <!-- / Layout page -->
+        </div>
+
+        <!-- Overlay -->
+        <div class="layout-overlay layout-menu-toggle"></div>
+
+        <!-- Drag Target Area To SlideIn Menu On Small Screens -->
+        <div class="drag-target"></div>
+    </div>
+    <!-- / Layout wrapper -->
+    {{if .USER_REJECTED}}
+    <div class="modal fade" id="upgradeUser" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-fullscreen-sm-down modal-simple modal-edit-user">
+            <div class="modal-content p-3 p-md-5">
+                <div class="modal-body p-1">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="text-center mb-4">
+                        <h3>Upgrade Akun</h3>
+                        <!-- <p>Updating user details will receive a privacy audit.</p> -->
+                    </div>
+                    <form id="formRegister" class="mt-3 mb-3" enctype="multipart/form-data">
+                        <input type="hidden" id="email" name="email" value="{{.EMAIL}}">
+                        <input type="hidden" id="token_data" name="token_data" value="{{.TOKEN}}">
+                        <h4 class="mb-2 text-black">A. Data Pemilik/Penanggungjawab</h4>
+                        <div class="row">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="full_name">Nama Pemilik Usaha/Penanggung
+                                  Jawab</label>
+                                <input type="text" id="full_name" name="full_name" class="gradient-input form-control" required>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="nik">KTP/NIK (16 digit)</label>
+                                <input type="number" id="nik" name="nik" class="gradient-input form-control" required>
+                                <script>
+                                    $('#nik').on('input', function() {
+                                        let nik_in = $(this).val().replace(/\D/g, '');
+                                        if (nik_in.length > 16) {
+                                            nik_in = nik_in.slice(0, 16);
+                                        }
+                                        $(this).val(nik_in);
+                                        if (nik_in.length < 16) {
+                                            $(this).removeClass('gradient-input');
+                                            $(this).css('background-color', 'pink');
+                                        } else {
+                                            $(this).addClass('gradient-input');
+                                            $(this).css('background-color', ''); // Set to empty string to reset
+                                        }
+                                    });
+                                </script>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="no_kk">No. Kartu Keluarga(16
+                                  digit)</label>
+                                <input type="number" id="no_kk" name="no_kk" class="gradient-input form-control" maxlength="16" required>
+                                <script>
+                                    $('#no_kk').on('input', function() {
+                                        let no_kk_in = $(this).val().replace(/\D/g, '');
+                                        if (no_kk_in.length > 16) {
+                                            no_kk_in = no_kk.slice(0, 16);
+                                        }
+                                        $(this).val(no_kk_in);
+                                        if (no_kk_in.length < 16) {
+                                            $(this).removeClass('gradient-input');
+                                            $(this).css('background-color', 'pink');
+                                        } else {
+                                            $(this).addClass('gradient-input');
+                                            $(this).css('background-color', ''); // Set to empty string to reset
+                                        }
+                                    });
+                                </script>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="npwp">NPWP (15-16 Digit)</label>
+                                <input type="number" id="npwp" name="npwp" class="gradient-input form-control" required>
+                                <script>
+                                    $('#npwp').on('input', function() {
+                                        let npwp_in = $(this).val().replace(/\D/g, '');
+                                        if (npwp_in.length > 16) {
+                                            npwp_in = npwp_in.slice(0, 16);
+                                        }
+                                        $(this).val(npwp_in);
+                                        if (npwp_in.length < 15) {
+                                            $(this).removeClass('gradient-input');
+                                            $(this).css('background-color', 'pink');
+                                        } else {
+                                            // Optional: Reset to original styles if length is more than 15
+                                            $(this).addClass('gradient-input');
+                                            $(this).css('background-color', ''); // Set to empty string to reset
+                                        }
+                                    });
+                                </script>
+                            </div>
+                            '
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="phone_number">No. HP/WA (10-13
+                                  digit)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+62</span>
+                                    <input type="number" id="phone_number" name="phone_number" class="gradient-input form-control" placeholder="Enter your phone number" required>
+                                </div>
+                                <script>
+                                    $('#phone_number').on('input', function() {
+                                        // Get the value, remove non-digit characters
+                                        let phoneNumber = $(this).val().replace(/\D/g, '');
+
+                                        // If length is more than 15 digits, truncate it
+                                        if (phoneNumber.length > 13) {
+                                            phoneNumber = phoneNumber.slice(0, 13);
+                                        }
+
+                                        // Update the input value with the valid phone number
+                                        $(this).val(phoneNumber);
+                                        if (phoneNumber.length < 10) {
+                                            $(this).removeClass('gradient-input');
+                                            $(this).css('background-color', 'pink');
+                                        } else {
+                                            // Optional: Reset to original styles if length is more than 15
+                                            $(this).addClass('gradient-input');
+                                            $(this).css('background-color', ''); // Set to empty string to reset
+                                        }
+                                    });
+                                </script>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="phone_number">No. HP/WA Referensi (10-13
+                                  digit)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+62</span>
+                                    <input type="number" id="phone_number" name="phone_number" class="gradient-input form-control" placeholder="Enter your phone number" required>
+                                </div>
+                                <script>
+                                    $('#phone_number').on('input', function() {
+                                        // Get the value, remove non-digit characters
+                                        let phoneNumber = $(this).val().replace(/\D/g, '');
+
+                                        // If length is more than 15 digits, truncate it
+                                        if (phoneNumber.length > 13) {
+                                            phoneNumber = phoneNumber.slice(0, 13);
+                                        }
+
+                                        // Update the input value with the valid phone number
+                                        $(this).val(phoneNumber);
+                                        if (phoneNumber.length < 10) {
+                                            $(this).removeClass('gradient-input');
+                                            $(this).css('background-color', 'pink');
+                                        } else {
+                                            // Optional: Reset to original styles if length is more than 15
+                                            $(this).addClass('gradient-input');
+                                            $(this).css('background-color', ''); // Set to empty string to reset
+                                        }
+                                    });
+                                </script>
+                            </div>
+
+                        </div>
+                        <div class="row address-form">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="country">Negara</label>
+                                <select name="country" class="country select2 form-select gradient-input" data-allow-clear="true" required>
+                                  <option value="">Pilih</option>
+                                  <option value="Indonesia">Indonesia</option>
+                              </select>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="province">Provinsi</label>
+                                <select name="province" class="province select2 form-select gradient-input" data-allow-clear="true" disabled required>
+                                  <option value="">Pilih</option>
+                              </select>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="city">Kota/Kabupaten</label>
+                                <select name="city" class="city select2 form-select gradient-input" data-allow-clear="true" disabled required>
+                                  <option value="">Pilih</option>
+                              </select>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="district">Kecamatan</label>
+                                <select name="district" class="district select2 form-select gradient-input" data-allow-clear="true" disabled required>
+                                  <option value="">Pilih</option>
+                              </select>
+                            </div>
+
+                            <div class="col-12 col-lg-12">
+                                <label class="form-label text-black" for="address">Alamat Lengkap</label>
+                                <input type="text" name="address" class="address gradient-input form-control" required>
+                            </div>
+                        </div>
+                        <h4 class="mb-2 mt-3 text-black">B. Data Merchant Soundbox</h4>
+                        <div class="row">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="full_name">Nama Badan Usaha</label>
+                                <input type="text" id="full_name" name="full_name" class="gradient-input form-control" required>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="npwp">NPWP Badan Usaha (15-16
+                                  Digit)</label>
+                                <input type="number" id="npwp" name="npwp" class="gradient-input form-control" required>
+                                <script>
+                                    $('#npwp').on('input', function() {
+                                        let npwp_in = $(this).val().replace(/\D/g, '');
+                                        if (npwp_in.length > 16) {
+                                            npwp_in = npwp_in.slice(0, 16);
+                                        }
+                                        $(this).val(npwp_in);
+                                        if (npwp_in.length < 15) {
+                                            $(this).removeClass('gradient-input');
+                                            $(this).css('background-color', 'pink');
+                                        } else {
+                                            // Optional: Reset to original styles if length is more than 15
+                                            $(this).addClass('gradient-input');
+                                            $(this).css('background-color', ''); // Set to empty string to reset
+                                        }
+                                    });
+                                </script>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="nama_usaha">Nama Usaha</label>
+                                <input type="text" id="nama_usaha" name="nama_usaha" class="gradient-input form-control" required>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="alamat_usaha">Alamat Usaha</label>
+                                <input type="text" id="alamat_usaha" name="alamat_usaha" class="gradient-input form-control" required>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="jenis_usaha">Jenis Usaha</label>
+                                <select name="jenis_usaha" class="select2 form-select gradient-input" data-allow-clear="true" required>
+                                  <option value="">Pilih</option>
+                                  <option value="Sembako">Sembako</option>
+                                  <option value="Warung">Warung</option>
+                                  <option value="Kecantikan">Kecantikan</option>
+                                  <option value="Manufaktur">Manufaktur</option>
+                                  <option value="Warung Makan">Warung Makan</option>
+                                  <option value="Percetakan">Percetakan</option>
+                                  <option value="Minimarket">Minimarket</option>
+                                  <option value="Restaurant">Restaurant</option>
+                                  <option value="Retail">Retail</option>
+                              </select>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <div class="row">
+                                    <div class="col-12 col-lg-2">
+                                        <label class="form-label text-black" for="jumlah_cabang">Jumlah
+                                          Cabang</label>
+                                        <input type="number" id="jumlah_cabang" name="jumlah_cabang" class="gradient-input form-control" required>
+                                    </div>
+                                    <div class="col-12 col-lg-6">
+                                        <label class="form-label text-black" for="rerata_transaksi">Rata-rata
+                                          Transaksi/Hari (Merchant) </label>
+                                        <input type="number" id="rerata_transaksi" name="rerata_transaksi" class="gradient-input form-control" placeholder="3000000" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label text-black" for="status_lokasi_usaha">Status Lokasi
+                                  Usaha</label>
+                                <select name="status_lokasi_usaha" class="select2 form-select gradient-input" data-allow-clear="true" required>
+                                  <option value="">Pilih</option>
+                                  <option value="Milik Sendiri">Milik Sendiri</option>
+                                  <option value="Sewa">Sewa</option>
+                              </select>
+                            </div>
+                        </div>
+                        <h4 class="mb-2 mt-3 text-black">C. Bentuk Badan Usaha</h4>
+                        <div class="row">
+                            <div class="col-12 ">
+                                <label class="form-label text-black" for="bentuk_badan_usaha">Bentuk Badan
+                                  Usaha</label>
+                                <select name="bentuk_badan_usaha" class="select2 form-select gradient-input" data-allow-clear="true" required>
+                                  <option value="">Pilih</option>
+                                  <option value="Perorangan">Perorangan</option>
+                                  <option value="UMKM">UMKM</option>
+                                  <option value="UMKM">Reguler</option>
+                              </select>
+                            </div>
+                            <div class="col-12">
+                                <h5 class="mt-3 mb-0">Persyaratan & Ketentuan</h5>
+                                <table class="border">
+                                    <tr>
+                                        <th class="border">Keterangan</th>
+                                        <th class="border">MDR</th>
+                                    </tr>
+                                    <tr>
+                                        <td class="border">> Rp. 500.000 (UMKM dengan total transaksi Rp. 20.000.000/bulan)
+                                        </td>
+                                        <td class="border">0%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border">
+                                            &lt; Rp. 500.000 (UMKM dengan total transaksi Rp. 20.000.000/bulan)</td>
+                                        <td class="border">0,3%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border">Regular Merchant (Pendapatan > 300 Juta/Tahun)</td>
+                                        <td class="border">0,7%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border" colspan="2">
+                                            <strong>Biaya Administrasi</strong><br> Rp. 2000 (dua ribu rupiah) per-hari, akan di transfer H+1/H+2 kepada Merchant
+                                        </td>
+                                    </tr>
+                                </table>
+                                <p class="m-0 text-danger">**seluruh Biaya transaksi sudah termasuk PPN</p>
+                                <p class="m-0 text-danger">**Merchant setuju atas Term&Condition yang tertera diatas
+                                </p>
+                            </div>
+                        </div>
+                        <h4 class="mb-2 mt-3 text-black">D. Nomor Rekening Merchant</h4>
+                        <div class="row">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="bentuk_badan_usaha">Nama Bank</label>
+                                <select name="bentuk_badan_usaha" class="select2 form-select gradient-input" data-allow-clear="true" required>
+                                  <option value="">Pilih</option>
+                                  <option value="BCA">BCA</option>
+                                  <option value="BRI">BRI</option>
+                                  <option value="Mandiri">Mandiri</option>
+                                  <option value="CIMB">CIMB</option>
+                              </select>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="nomor_rekening">No. Rekening Pemilik
+                              </label>
+                                <input type="number" id="nomor_rekening" name="nomor_rekening" class="gradient-input form-control" placeholder="1234 5678 9012" required>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="nama_pemilik_nomor_rekening">Nama Pemilik
+                                  Rekening</label>
+                                <input type="text" id="nama_pemilik_nomor_rekening" name="nama_pemilik_nomor_rekening" class="gradient-input form-control" required>
+                            </div>
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="cabang_bank">Cabang Bank</label>
+                                <input type="text" id="cabang_bank" name="cabang_bank" class="gradient-input form-control">
+                            </div>
+                        </div>
+
+                        <h4 class="mb-2 mt-3 text-black">E. Penanggung Jawab</h4>
+                        <div class="row">
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="nama_perusahaan">Nama
+                                  Perusahaan/Badan Usaha</label>
+                                <input type="text" id="nama_perusahaan" name="nama_perusahaan" class="gradient-input form-control" required>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="nama_penanggung_jawab">Nama
+                                  Penanggung Jawab</label>
+                                <input type="text" id="nama_penanggung_jawab" name="nama_penanggung_jawab" class="gradient-input form-control" required>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="phone_number">No. HP/WA (10-13 digit)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">+62</span>
+                                    <input type="number" id="phone_number" name="phone_number" class="gradient-input form-control" placeholder="Enter your phone number" required>
+                                </div>
+                                <script>
+                                    $('#phone_number').on('input', function() {
+                                        // Get the value, remove non-digit characters
+                                        let phoneNumber = $(this).val().replace(/\D/g, '');
+
+                                        // If length is more than 15 digits, truncate it
+                                        if (phoneNumber.length > 13) {
+                                            phoneNumber = phoneNumber.slice(0, 13);
+                                        }
+
+                                        // Update the input value with the valid phone number
+                                        $(this).val(phoneNumber);
+                                        if (phoneNumber.length < 10) {
+                                            $(this).removeClass('gradient-input');
+                                            $(this).css('background-color', 'pink');
+                                        } else {
+                                            // Optional: Reset to original styles if length is more than 15
+                                            $(this).addClass('gradient-input');
+                                            $(this).css('background-color', ''); // Set to empty string to reset
+                                        }
+                                    });
+                                </script>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="email_penanggung_jawab">E-mail</label>
+                                <input type="text" id="email_penanggung_jawab" name="email_penanggung_jawab" class="gradient-input form-control" required>
+                            </div>
+
+                            <div class="col-12 col-lg-6">
+                                <label class="form-label text-black" for="type_edc">Type EDC</label>
+                                <input type="text" id="type_edc" name="type_edc" class="gradient-input form-control" required>
+                            </div>
+
+
+
+                            <h4 class="mb-2 mt-3 text-black">F. Lampiran Foto</h4>
+                            <div class="row">
+                                <div class="col-12 col-lg-12 mb-3">
+                                    <label class="form-label text-black" for="foto_lokasi_usaha_depan">Foto Lokasi
+                                      Usaha
+                                      Tampak Depan</label>
+                                    <div class="d-flex flex-row">
+                                        <input type="file" id="foto_lokasi_usaha_depan" name="foto_lokasi_usaha_depan" class="gradient-input form-control upload-image-preview" accept="image/png, image/jpeg" required>
+                                        <button type="button" class="btn btn-primary openCamera"><i
+                                              class="fas fa-camera"></i> </button>
+                                    </div>
+                                    <img src="#" alt="Image Preview" style="display:none; max-width: 100%; height: auto; margin-top: 10px;">
+                                </div>
+                                <div class="col-12 col-lg-12 mb-3">
+                                    <label class="form-label text-black" for="foto_lokasi_usaha_belakang">Foto
+                                      Lokasi
+                                      Usaha Tampak Belakang</label>
+                                    <div class="d-flex flex-row">
+                                        <input type="file" id="foto_lokasi_usaha_belakang" name="foto_lokasi_usaha_belakang" class="gradient-input form-control upload-image-preview" accept="image/png, image/jpeg" required>
+                                        <button type="button" class="btn btn-primary openCamera"><i
+                                              class="fas fa-camera"></i> </button>
+                                    </div>
+                                    <img src="#" alt="Image Preview" style="display:none; max-width: 100%; height: auto; margin-top: 10px;">
+                                </div>
+                                <div class="col-12 col-lg-12 mb-3">
+                                    <label class="form-label text-black" for="foto_lokasi_usaha_produksi">Foto
+                                      Lokasi
+                                      Usaha Bag Produksi</label>
+                                    <div class="d-flex flex-row">
+                                        <input type="file" id="foto_lokasi_usaha_produksi" name="foto_lokasi_usaha_produksi" class="gradient-input form-control upload-image-preview" accept="image/png, image/jpeg" required>
+                                        <button type="button" class="btn btn-primary openCamera"><i
+                                              class="fas fa-camera"></i> </button>
+                                    </div>
+                                    <img src="#" alt="Image Preview" style="display:none; max-width: 100%; height: auto; margin-top: 10px;">
+                                </div>
+                                <div class="col-12 col-lg-12 mb-3">
+                                    <label class="form-label text-black" for="foto_lokasi_usaha_stok">Foto Lokasi
+                                      Usaha
+                                      Stok/Gudang</label>
+                                    <div class="d-flex flex-row">
+                                        <input type="file" id="foto_lokasi_usaha_stok" name="foto_lokasi_usaha_stok" class="gradient-input form-control upload-image-preview" accept="image/png, image/jpeg" required>
+                                        <button type="button" class="btn btn-primary openCamera"><i
+                                              class="fas fa-camera"></i> </button>
+                                    </div>
+                                    <img src="#" alt="Image Preview" style="display:none; max-width: 100%; height: auto; margin-top: 10px;">
+                                </div>
+                            </div>
+
+                            <p>
+                                Merchant Boarding Form (MBF) ini diisi dengan data yang benar dengan Syarat dan Ketentuan ini disepakati dan ditandatangani para pihak dalam keadaan sadar, sehat jasmani dan rohani, serta tidak dibawah tekanan atau paksaan dari pihak manapun. Demikian
+                                MBF ini dibuat dengan rangkap 2 (dua) dan ditanda tangani oleh Para Pihak.
+                            </p>
+                            <button class="btn btn-primary d-grid w-100 mb-3" id="submit-button" type="button" onclick="registerMerchant()">Daftar</button>
+                            <div class="text-center">
+                                <a href="/app/user-register">
+                                    <i class="bx bx-chevron-left scaleX-n1-rtl bx-sm"></i> Back to Register Email
+                                </a>
+                            </div>
+                    </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="registerMerchant()">Submit</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header m-0 p-0">
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body m-1 p-1">
+                        <video id="cameraFeed" style="width: 100%; display: none;" autoplay playsinline></video>
+                        <canvas id="photoCanvas" style="display: none;"></canvas>
+                        <img id="capturedImage" style="display: none; width: 100%;">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="switchCamera" style="display: none;">Switch
+                      Camera</button>
+                        <button type="button" class="btn btn-primary" id="takePhoto">Capture</button>
+                        <button type="button" class="btn btn-success" id="acceptPhoto" style="display: none;">Accept</button>
+                        <button type="button" class="btn btn-danger" id="retakePhoto" style="display: none;">Retake</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+        <!-- Core JS -->
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/popper/popper.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/hammer/hammer.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/i18n/i18n.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/typeahead-js/typeahead.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/js/menu.js"></script>
+
+        <!-- Vendors JS -->
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/moment/moment.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/select2/select2.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/@form-validation/umd/bundle/popular.min.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/cleavejs/cleave.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/cleavejs/cleave-phone.js"></script>
+
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/quill/katex.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/quill/quill.js"></script>
+
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/dropzone/dropzone.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/jquery-repeater/jquery-repeater.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/flatpickr/flatpickr.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/bootstrap-datepicker/bootstrap-datepicker.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/bootstrap-daterangepicker/bootstrap-daterangepicker.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/jquery-timepicker/jquery-timepicker.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/pickr/pickr.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/tagify/tagify.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/sweetalert2/sweetalert2.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/apex-charts/apexcharts.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/bs-stepper/bs-stepper.js"></script>
+        <!-- Vendors JS -->
+        <script src="{{.BASE_URL_PATH}}/assets/vendor/libs/nouislider/nouislider.js"></script>
+        <!-- Main JS -->
+        <script src="{{.BASE_URL_PATH}}/assets/js/main.js"></script>
+
+        <script src="{{.BASE_URL_PATH}}/assets/js/ui-popover.js"></script>
+
+        <script>
+            function requestInfoSaldo() {
+                fetch(`${webPath}saldo`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // if (data.error) {
+                        //     console.error("Error fetching saldo:", data.error);
+                        //     // alert(`Error: ${data.error}`);
+                        // } else {
+                        // }
+                        const saldoElements = document.querySelectorAll('.saldo_siap_tarik');
+                        saldoElements.forEach(element => {
+                            var info = `Rp ${data.total_amount} `;
+                            if (data.error) {
+                                info += `<i class="text-warning">${data.error}</i>`
+                            }
+                            element.innerHTML = info;
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Fetch error:", error);
+                        const saldoElements = document.querySelectorAll('.saldo_siap_tarik');
+                        saldoElements.forEach(element => {
+                            element.innerHTML = `Rp 0 <i class="text-warning">${error.error}</i>`;
+                        });
+                    });
+            }
+
+            function requestInfoSaldoPending() {
+                fetch(`${webPath}saldo_pending`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const saldoElements = document.querySelectorAll('.saldo_pending');
+                        saldoElements.forEach(element => {
+                            var info = `Rp ${data.total_amount} (Pending)`;
+                            if (data.error) {
+                                info += `<i class="text-warning">${data.error}</i>`
+                            }
+                            element.innerHTML = info;
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Fetch error:", error);
+                        // alert(`Fetch error: ${error.message}`);
+                        const saldoElements = document.querySelectorAll('.saldo_pending');
+                        saldoElements.forEach(element => {
+                            element.innerHTML = `Rp 0 (Pending) <i class="text-warning">${error.error}</i>`;
+                        });
+                    });
+            }
+        </script>
+
+        <!-- Page JS -->
+        <script src="{{.BASE_URL_PATH}}/assets/js/dashboards-analytics.js"></script>
+        <script src="{{.BASE_URL_PATH}}/assets/self/web.js?_=12"></script>
+        {{if .USER_REJECTED}}
+        <script>
+            function formatCountdown(seconds) {
+                if (seconds <= 0) return "00 Jam, 00 Menit, 00 Detik";
+
+                let days = Math.floor(seconds / 86400);
+                let hours = Math.floor((seconds % 86400) / 3600);
+                let minutes = Math.floor((seconds % 3600) / 60);
+                let secs = seconds % 60;
+
+                let now = new Date();
+                now.setSeconds(now.getSeconds() + seconds); // Get future time
+
+                if (days > 0) {
+                    // Format with YYYY-MM-DD HH:mm:ss if more than a day
+                    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ` +
+                        `${String(hours).padStart(2, '0')} Jam, ${String(minutes).padStart(2, '0')} Menit, ${String(secs).padStart(2, '0')} Detik`;
+                } else {
+                    // Format with HH:mm:ss if less than a day
+                    return `${String(hours).padStart(2, '0')} Jam, ${String(minutes).padStart(2, '0')} Menit, ${String(secs).padStart(2, '0')} Detik`;
+                }
+            }
+
+            function startCountdown(seconds) {
+                seconds = parseInt(seconds, 10);
+                if (isNaN(seconds)) {
+                    console.log("Invalid input, setting seconds to default value.");
+                    seconds = 0; // Set a default value
+                    return
+                }
+                const countdownElement = document.getElementById("countdown");
+                if (!countdownElement) {
+                    return
+                }
+                const timerInterval = setInterval(() => {
+                    if (seconds <= 0) {
+                        clearInterval(timerInterval);
+                        countdownElement.innerText = "00 Jam, 00 Menit, 00 Detik";
+                    } else {
+                        countdownElement.innerText = formatCountdown(seconds);
+                        seconds--;
+                    }
+                }, 1000);
+            }
+            startCountdown("{{.TTL}}");
+
+            var full_name = document.getElementById("full_name");
+            var username_payment = document.getElementById("username_payment");
+            if (full_name && username_payment) { // Check if both elements exist
+                full_name.addEventListener("keyup", function() {
+                    username_payment.textContent = "Nama Pengguna: " + this.value; // Update text only if element exists
+                });
+            }
+
+            var phone_number = document.getElementById("phone_number");
+            var userphone_payment = document.getElementById("userphone_payment");
+            if (phone_number && userphone_payment) { // Check if both elements exist
+                phone_number.addEventListener("keyup", function() {
+                    userphone_payment.textContent = "No. Hp : +62" + this.value; // Update text only if element exists
+                });
+            }
+
+
+
+            // _____________________________________________________ USER INPUT _________________
+            var formKerjasama = document.getElementById('form_kerjasama');
+            if (formKerjasama) {
+
+                formKerjasama.addEventListener('change', function(event) {
+                    const file = event.target.files[0];
+                    const previewContainer = document.getElementById('preview-container');
+                    const filePreview = document.getElementById('file-preview');
+                    const docxPreview = document.getElementById('docx-preview');
+                    const docxMessage = document.getElementById('docx-message');
+
+                    // Reset the preview and messages
+                    filePreview.style.display = 'none';
+                    docxPreview.style.display = 'none';
+                    docxMessage.style.display = 'none';
+                    previewContainer.style.display = 'none';
+
+                    if (file) {
+                        const fileType = file.type;
+
+                        // PDF file handling
+                        if (fileType === 'application/pdf') {
+                            const fileReader = new FileReader();
+                            fileReader.onload = function(e) {
+                                filePreview.src = e.target.result;
+                                filePreview.style.display = 'block';
+                                previewContainer.style.display = 'block';
+                            };
+                            fileReader.readAsDataURL(file);
+
+                            // DOCX file handling with Mammoth.js
+                        } else if (file.name.endsWith('.docx')) {
+                            const reader = new FileReader();
+                            reader.onload = function(event) {
+                                mammoth.convertToHtml({
+                                        arrayBuffer: event.target.result
+                                    })
+                                    .then(function(result) {
+                                        docxPreview.innerHTML = result.value;
+                                        previewContainer.style.display = 'block';
+                                        docxPreview.style.display = 'block';
+                                        docxMessage.style.display = 'block';
+                                    })
+                                    .catch(function(err) {
+                                        console.error("Error converting DOCX file:", err);
+                                    });
+                            };
+                            reader.readAsArrayBuffer(file);
+
+                        } else {
+                            previewContainer.style.display = 'none';
+                        }
+                    } else {
+                        previewContainer.style.display = 'none';
+                    }
+                });
+            }
+        </script>
+        <script>
+            document.getElementById("submit-button").disabled = true;
+
+            // Listen for keyup event on the email input field
+            const password = document.getElementById("password");
+            password.addEventListener("keyup", function() {
+                validatePassword();
+            });
+            const passwordConfirm = document.getElementById("confirm-password");
+            passwordConfirm.addEventListener("keyup", function() {
+                validatePassword();
+            });
+
+            function validatePassword() {
+                if (password.value == passwordConfirm.value) {
+                    document.getElementById("submit-button").disabled = false;
+                } else {
+                    document.getElementById("submit-button").disabled = true;
+                }
+            }
+
+            $('.upload-image-preview').on('change', function() {
+                const input = this;
+                const file = input.files[0];
+                const preview = $(this).closest('.mb-3').find('img'); // Finds the img within the same .mb-3 container
+
+                if (file) {
+                    const fileType = file.type;
+                    const validImageTypes = ["image/jpeg", "image/png"];
+
+                    if (validImageTypes.includes(fileType)) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            preview.attr('src', e.target.result).show(); // Show the img element with the preview
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        alert("Invalid file type. Only JPG and PNG images are allowed.");
+                        input.value = ""; // Clear the input
+                        preview.attr('src', '#').hide(); // Hide the img element
+                    }
+                } else {
+                    preview.attr('src', '#').hide(); // Hide the img element if no file is selected
+                }
+            });
+
+            function registerMerchant() {
+                const form = document.getElementById("formRegister");
+                const formData = new FormData(form);
+
+                // Get all required fields dynamically
+                const requiredFields = form.querySelectorAll("[required]");
+
+                let isValid = true;
+
+                // Validate required fields
+                requiredFields.forEach(field => {
+                            let tagValid = true;
+                            let info = "";
+                            const value = formData.get(field.name);
+                            if (field.name == "nik" && value.length < 16) {
+                                isValid = false;
+                                tagValid = false;
+                                field.style.backgroundColor = "pink";
+                                info = "NIK minimal 16 digit";
+                            }
+                            if (field.name == "npwp" && value.length < 15) {
+                                isValid = false;
+                                tagValid = false;
+                                field.style.backgroundColor = "pink";
+                                info = "NPWP minimal 15 digit";
+                            }
+                            if (field.name == "phone_number" && value.length < 10) {
+                                isValid = false;
+                                tagValid = false;
+                                field.style.backgroundColor = "pink";
+                                info = "Telefon minimal 10 digit";
+                            }
+                            if (field.name == "phone_number2" && value.length < 10) {
+                                isValid = false;
+                                tagValid = false;
+                                field.style.backgroundColor = "pink";
+                                info = "Telefon minimal 10 digit";
+                            }
+                            if (!value || value === "") {
+                                isValid = false;
+                                tagValid = false;
+                                field.style.backgroundColor = "pink";
+
+                                // Log field name or ID
+                                console.log(`Field ${field.name ? `name: ${field.name}` : `ID: ${field.id}`} is required.`);
+              }
+              if (!isValid && !tagValid) {
+                  // var erikTeks = "Alamat Lengkap!"
+                  // if (field.name == "address") {
+                  //   erikTeks = "Alamat Lengkap!"
+                  // } else {
+                  //   erikTeks = field.name
+                  // }
+                  var namaKolom = "";
+                  switch (field.name.toLowerCase()) {
+                      case "address":
+                          namaKolom = "Alamat Lengkap!";
+                          break;
+                      case "full_name":
+                          namaKolom = "Nama lengkap!";
+                          break;
+                      case "district":
+                          namaKolom = "Kecamatan!";
+                          break;
+                      case "city":
+                          namaKolom = "Kota";
+                          break;
+                      case "province!":
+                          namaKolom = "Provinsi!";
+                          break;
+                      case "country":
+                          namaKolom = "Negara!";
+                          break;
+                      default:
+                          namaKolom = field.name;
+                          break;
+                  }
+
+                  console.log(`${field.id.replace("-", " ")}`)
+                  console.log(info + " Masseh")
+                  Swal.fire({
+                      icon: "error",
+                      title: "Error",
+                      // text: `Tolong Diisi Kolom ${field.id.replace("-", " ")}. ${info}`
+                      text: `Tolong Diisi Kolom: ${namaKolom}. ${info}`
+                  });
+                  return
+              }
+
+          });
+
+          if (!isValid) return;
+
+          // Check if password matches
+          if (formData.get("password") !== formData.get("confirm-password")) {
+              Swal.fire({
+                  icon: "error",
+                  title: "Error",
+                  text: "Passwords do not match"
+              });
+              return;
+          }
+
+          // All validations passed, proceed with the fetch API call
+          fetch(window.location.href, {
+              method: "POST",
+              body: formData
+          })
+              .then(response => {
+                  if (!response.ok) {
+                      return response.json().then(errData => {
+                          throw new Error(errData.error || "Something went wrong");
+                      });
+                  }
+                  return response.json();
+              })
+              .then(data => {
+                  Swal.fire({
+                      icon: "success",
+                      title: "Success",
+                      text: data.message
+                  });
+                  // setTimeout(function () {
+                  //   window.location.href = "/login";
+                  // }, 2000);
+                  setTimeout(function () {
+                      let currentUrl = window.location.pathname;
+                      let newUrl = currentUrl.replace("register-new-user", "register-done-thank-you");
+                      window.location.href = newUrl;
+                  }, 2000);
+              })
+              .catch(error => {
+                  Swal.fire({
+                      icon: "error",
+                      title: "Error",
+                      text: error.message
+                  });
+              });
+      }
+      $('.address-form').each(function () {
+          const $form = $(this);
+
+          $form.find('.country').change(function () {
+              var country = $(this).val();
+              var $provinceSelect = $form.find('.province');
+              var $citySelect = $form.find('.city');
+              var $districtSelect = $form.find('.district');
+
+              $.getJSON('/app/addr/province?country=ID', function (data) {
+                  // setMapPoint(-2.446665, 115.191371, 5);
+                  $provinceSelect.empty().append('<option value="">Select</option>');
+                  $citySelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+
+                  $provinceSelect.prop('disabled', false);
+                  $.each(data, function (index, province) {
+                      $provinceSelect.append($('<option>', {
+                          value: province.name,
+                          text: province.name
+                      }));
+                  });
+              }).fail(function () {
+                  console.error('Error fetching provinces');
+              });
+          });
+
+          $form.find('.province').change(function () {
+              var provinceId = $(this).val();
+              var $citySelect = $form.find('.city');
+              var $districtSelect = $form.find('.district');
+
+              if (provinceId) {
+                  $.getJSON('/app/addr/city?province=' + provinceId, function (data) {
+                      $citySelect.empty().append('<option value="">Select</option>');
+                      $citySelect.prop('disabled', false);
+                      $.each(data, function (index, city) {
+                          $citySelect.append($('<option>', {
+                              value: city.name,
+                              text: city.name
+                          }));
+                      });
+                      $districtSelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+                  }).fail(function () {
+                      console.error('Error fetching cities');
+                  });
+
+                  $.getJSON('/app/pin/province?l=' + provinceId, function (data) {
+                      // setMapPoint(data.latitude, data.longitude, 8);
+                  }).fail(function () {
+                      console.error('Error fetching pin for province');
+                  });
+              } else {
+                  $citySelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+                  $districtSelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+              }
+          });
+
+          $form.find('.city').change(function () {
+              var cityId = $(this).val();
+              var $districtSelect = $form.find('.district');
+
+              if (cityId) {
+                  $.getJSON('/app/addr/district?city=' + cityId, function (data) {
+                      $districtSelect.empty().append('<option value="">Select</option>');
+                      $districtSelect.prop('disabled', false);
+                      $.each(data, function (index, district) {
+                          $districtSelect.append($('<option>', {
+                              value: district.name,
+                              text: district.name
+                          }));
+                      });
+                  }).fail(function () {
+                      console.error('Error fetching districts');
+                  });
+
+                  $.getJSON('/app/pin/city?l=' + cityId, function (data) {
+                      // setMapPoint(data.latitude, data.longitude, 12);
+                  }).fail(function () {
+                      console.error('Error fetching pin for city');
+                  });
+              } else {
+                  $districtSelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+              }
+          });
+
+          $form.find('.district').change(function () {
+              var districtId = $(this).val();
+
+              if (districtId) {
+                  $.getJSON('/app/pin/district?l=' + districtId, function (data) {
+                      // setMapPoint(data.latitude, data.longitude, 18);
+                  }).fail(function () {
+                      console.error('Error fetching pin for district');
+                  });
+              }
+          });
+      });
+
+      $('#country').change(function () {
+          var country = $(this).val();
+          var $provinceSelect = $('#province');
+          var $citySelect = $('#city');
+          var $districtSelect = $('#district');
+
+          $.getJSON('/app/addr/province?country=ID', function (data) {
+              // setMapPoint(-2.446665, 115.191371, 5);
+              // Clear previous options
+              $provinceSelect.empty().append('<option value="">Select</option>');
+              $citySelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+
+              // Enable the province select
+              $provinceSelect.prop('disabled', false);
+
+              // Append the new options
+              $.each(data, function (index, province) {
+                  $provinceSelect.append($('<option>', {
+                      value: province.name,
+                      text: province.name
+                  }));
+              });
+          }).fail(function () {
+              console.error('Error fetching provinces');
+          });
+      });
+
+      // Handle province change
+      $('#province').change(function () {
+          var provinceId = $(this).val();
+          var $citySelect = $('#city');
+          var $districtSelect = $('#district');
+
+          if (provinceId) {
+              $.getJSON('/app/addr/city?province=' + provinceId, function (data) {
+                  // Clear previous options
+                  $citySelect.empty().append('<option value="">Select</option>');
+
+                  // Enable the city select
+                  $citySelect.prop('disabled', false);
+
+                  // Append the new options
+                  $.each(data, function (index, city) {
+                      $citySelect.append($('<option>', {
+                          value: city.name,
+                          text: city.name
+                      }));
+                  });
+                  $districtSelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+              }).fail(function () {
+                  console.error('Error fetching cities');
+              });
+              $.getJSON('/app/pin/province?l=' + provinceId, function (data) {
+                  setMapPoint(data.latitude, data.longitude, 8);
+              }).fail(function () {
+                  console.error('Error fetching cities');
+              });
+          } else {
+              // If no province is selected, disable the city select
+              $citySelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+              $districtSelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+          }
+      });
+      $('#city').change(function () {
+          var cityId = $(this).val();
+          var $districtSelect = $('#district');
+
+          if (cityId) {
+              $.getJSON('/app/addr/district?city=' + cityId, function (data) {
+                  // Clear previous options
+                  $districtSelect.empty().append('<option value="">Select</option>');
+
+                  // Enable the district select
+                  $districtSelect.prop('disabled', false);
+
+                  // Append the new options
+                  $.each(data, function (index, district) {
+                      $districtSelect.append($('<option>', {
+                          value: district.name,
+                          text: district.name
+                      }));
+                  });
+              }).fail(function () {
+                  console.error('Error fetching districts');
+              });
+              $.getJSON('/app/pin/city?l=' + cityId, function (data) {
+                  setMapPoint(data.latitude, data.longitude, 12);
+              }).fail(function () {
+                  console.error('Error fetching cities');
+              });
+          } else {
+              // If no city is selected, disable the district select
+              $districtSelect.empty().append('<option value="">Select</option>').prop('disabled', true);
+          }
+      });
+      $('#district').change(function () {
+          var districtId = $(this).val();
+
+          if (districtId) {
+              $.getJSON('/app/pin/district?l=' + districtId, function (data) {
+                  setMapPoint(data.latitude, data.longitude, 18);
+              }).fail(function () {
+                  console.error('Error fetching cities');
+              });
+          }
+      });
+        </script>
+        <script>
+            let stream = null;
+            let facingMode = 'environment'; // Start with back camera
+
+            // Handle file input change?
+
+            // Open camera modal
+            $('.openCamera').click(function() {
+                var theInput = $(this).closest('.mb-3').find('input');
+                FOCUSED_INPUT_ID = theInput.attr('id');
+                startCamera();
+                $('#cameraModal').modal('show');
+            });
+
+            // Start camera
+            async function startCamera() {
+                try {
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: facingMode
+                        }
+                    });
+
+                    const video = document.getElementById('cameraFeed');
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    $('#capturedImage').hide();
+                    $('#takePhoto').show();
+                    $('#acceptPhoto, #retakePhoto').hide();
+
+                    // Show switch camera button if multiple cameras are available
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                    if (videoDevices.length > 1) {
+                        $('#switchCamera').show();
+                    }
+                } catch (err) {
+                    alert('Error accessing camera: ' + err.message);
+                }
+            }
+
+            // Switch camera
+            $('#switchCamera').click(function() {
+                facingMode = facingMode === 'environment' ? 'user' : 'environment';
+                startCamera();
+            });
+
+            // Take photo
+            $('#takePhoto').click(function() {
+                const video = document.getElementById('cameraFeed');
+                const canvas = document.getElementById('photoCanvas');
+                const context = canvas.getContext('2d');
+
+                // Set canvas size to video size
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                // Draw video frame to canvas
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // Convert canvas to image
+                const imageData = canvas.toDataURL('image/jpeg');
+                $('#capturedImage').attr('src', imageData).show();
+
+                // Hide video and show captured image
+                video.style.display = 'none';
+                $('#takePhoto').hide();
+                $('#acceptPhoto, #retakePhoto').show();
+            });
+
+            // Retake photo
+            $('#retakePhoto').click(function() {
+                const video = document.getElementById('cameraFeed');
+                video.style.display = 'block';
+                $('#capturedImage').hide();
+                $('#takePhoto').show();
+                $('#acceptPhoto, #retakePhoto').hide();
+            });
+
+            // Accept photo
+            $('#acceptPhoto').click(function() {
+                const imageData = document.getElementById('capturedImage').src;
+
+                // Convert base64 to blob
+                const blob = dataURItoBlob(imageData);
+                const file = new File([blob], "captured_image.jpg", {
+                    type: "image/jpeg"
+                });
+
+                // Create a new FileList object
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+
+                // Set the file input's files
+                document.getElementById(FOCUSED_INPUT_ID).files = dataTransfer.files;
+
+                // Update preview
+                const preview = $('#' + FOCUSED_INPUT_ID).closest('.mb-3').find('img');
+                preview.attr('src', imageData).show();
+                // $('#'+FOCUSED_INPUT_ID).attr('src', imageData).show();
+
+                // Close modal and stop camera
+                $('#cameraModal').modal('hide');
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            });
+
+            // Clean up when modal is closed
+            $('#cameraModal').on('hidden.bs.modal', function() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            });
+
+            // Helper function to convert base64 to blob
+            function dataURItoBlob(dataURI) {
+                const byteString = atob(dataURI.split(',')[1]);
+                const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+
+                return new Blob([ab], {
+                    type: mimeString
+                });
+            }
+        </script>
+
+        <script>
+            // Handle browser back and forward navigation
+            window.addEventListener("popstate", function() {
+                var targetTabId = window.location.hash;
+
+                if (targetTabId == null || targetTabId == "") {
+                    targetTabId = $(".menu-link:not(.menu-toggle):first").attr("href");
+                }
+                loadAndShowTab(targetTabId);
+            });
+        </script>
+        {{end}}
+</body>
+
+</html>
