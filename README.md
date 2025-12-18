@@ -69,23 +69,107 @@ go build -o server_monitor main.go
 ### Windows Installation
 ```bash
 # Build for Windows
-go build -o server_monitor.exe main.go
+go build -o main.exe main.go
 
 # Run
-.\server_monitor.exe
+.\main.exe
+
+# OR install as Windows service (recommended)
+.\main.exe -install
 ```
+
+#### Installing as a Windows Service
+
+The application can automatically install itself as a Windows service:
+
+```bash
+# Build the application
+go build -o main.exe main.go
+
+# Install as Windows service (requires administrator privileges)
+.\main.exe -install
+```
+
+This will:
+- Create a Windows service with automatic startup
+- Configure the service to restart on failure
+- Start the service immediately
+
+**Service Management:**
+```bash
+# Check service status
+sc.exe query [service-name]
+
+# Start service
+sc.exe start [service-name]
+
+# Stop service
+sc.exe stop [service-name]
+
+# Delete service
+sc.exe delete [service-name]
+```
+
+**Note**: Run Command Prompt or PowerShell as Administrator for service installation and management. The service name will be the folder name where the application is located, or you can specify it using the `SERVICE_NAME` environment variable.
 
 ### Linux Installation
 ```bash
 # Build for Linux
-go build -o server_monitor main.go
+go build -o main main.go
 
 # Make executable
-chmod +x server_monitor
+chmod +x main
 
-# Run with sudo for full service detection
-sudo ./server_monitor
+# Run directly with sudo for full service detection
+sudo ./main
+
+# OR install as systemd service (recommended)
+sudo ./main -install
 ```
+
+#### Installing as a Linux Service
+
+The application can automatically install itself as a systemd service on Linux:
+
+```bash
+# Build the application
+go build -o main main.go
+
+# Install as systemd service (requires sudo)
+sudo ./main -install
+```
+
+This will:
+- Create a systemd service file at `/etc/systemd/system/[service-name].service`
+- Enable the service to start automatically on boot
+- Start the service immediately
+- Configure automatic restart on failure
+
+**Service Management:**
+```bash
+# Check service status
+sudo systemctl status [service-name]
+
+# View service logs
+sudo journalctl -u [service-name] -f
+
+# Restart service
+sudo systemctl restart [service-name]
+
+# Stop service
+sudo systemctl stop [service-name]
+
+# Disable service (prevent auto-start on boot)
+sudo systemctl disable [service-name]
+
+# Remove service
+sudo systemctl stop [service-name]
+sudo systemctl disable [service-name]
+sudo rm /etc/systemd/system/[service-name].service
+sudo systemctl daemon-reload
+```
+
+**Note**: The service name will be the folder name where the application is located, or you can specify it using the `SERVICE_NAME` environment variable in your `.env` file.
 
 ## Configuration
 
@@ -198,17 +282,39 @@ If not configured, ESXi monitoring features will be disabled.
 # Multiple ESXi hosts (JSON array)
 # Format: https://username:password@host/sdk
 ESXI=["https://root:password@192.168.1.10/sdk","https://root:password@192.168.1.11/sdk"]
+## Usage
 
-# Single ESXi connection (alternative)
-ESXI_URL=https://192.168.1.10/sdk
-ESXI_HOST=192.168.1.10
-ESXI_USER=root
-ESXI_PASS=password
+### Starting the Application
 
-# Skip SSL certificate verification (1=true, 0=false)
-ESXI_INSECURE=0
+#### Run Directly
+```bash
+# Linux/macOS
+sudo ./main
 
-# Polling interval in seconds
+# Windows (as administrator)
+.\main.exe
+```
+
+#### Install and Run as Service (Recommended for Production)
+```bash
+# Linux
+sudo ./main -install
+
+# Windows (as administrator)
+.\main.exe -install
+```
+
+#### Command Line Options
+```bash
+# Install as system service
+./main -install
+
+# Set master host URL (for slave/agent mode)
+./main -master http://192.168.1.100:28888
+
+# Combine options
+./main -install -master http://192.168.1.100:28888
+```olling interval in seconds
 POLL_INTERVAL_SECONDS=60
 
 # Data cache file path
@@ -393,11 +499,14 @@ Uses multiple Windows APIs:
 When Redis is configured, it's used for:
 - Session management
 - Temporary data caching
-- Cross-instance data sharing
+### Service Scanner Shows No Services (Linux)
+```bash
+# Ensure the application has sudo privileges
+sudo ./main
 
-## Monitoring Intervals
-
-Default monitoring intervals (configurable):
+# Or if running as service, check the service is running with proper permissions
+sudo systemctl status [service-name]
+```ault monitoring intervals (configurable):
 - **System Monitoring**: 10 seconds
 - **Service Scanner**: 30 seconds
 - **ESXi Polling**: 60 seconds (configurable via `POLL_INTERVAL_SECONDS`)
@@ -454,24 +563,47 @@ telnet 192.168.88.1 8728
 
 ## Development
 
-### Project Structure
+### Building for Different Platforms
+
+```bash
+# Windows (64-bit)
+GOOS=windows GOARCH=amd64 go build -o main.exe
+
+# Linux (64-bit)
+GOOS=linux GOARCH=amd64 go build -o main
+
+# Linux (ARM - Raspberry Pi)
+GOOS=linux GOARCH=arm64 go build -o main
+
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 go build -o main
+
+# macOS (Apple Silicon)
+GOOS=darwin GOARCH=arm64 go build -o main
 ```
-server_monitor/
-├── main.go                 # Application entry point
-├── appInstaller/           # OS service installation
-├── cache/                  # Cache management
-├── controller/             # HTTP/WebSocket controllers
-├── database/               # Database connections
-├── kvstore/                # Redis key-value store
-├── logger/                 # Logging configuration
-├── model/                  # Data models
-├── monitor/                # Monitoring services
-│   ├── system_monitor.go   # System resource monitoring
-│   ├── esxi_monitor.go     # ESXi monitoring
-│   ├── mikrotik_service.go # MikroTik monitoring
-│   └── activity_monitor.go # Activity detection
-├── routes/                 # API routing
-├── serviceScanner/         # Network service detection
+
+### Quick Deployment Script
+
+For quick deployment on a new server:
+
+```bash
+# Linux deployment script
+#!/bin/bash
+git clone https://github.com/faiz-muttaqin/server_monitor.git
+cd server_monitor
+go build -o main main.go
+chmod +x main
+
+# Copy and configure .env file
+cp .env.example .env
+nano .env  # Edit configuration
+
+# Install as service
+sudo ./main -install
+
+# Check status
+sudo systemctl status server_monitor
+``` serviceScanner/         # Network service detection
 ├── utils/                  # Utility functions
 ├── views/                  # Web UI templates
 ├── webgui/                 # Web GUI components
