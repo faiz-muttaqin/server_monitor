@@ -1,0 +1,7 @@
+html/log
+html/uploads/*
+certificate/*
+.cache
+.log
+.env
+!.env.example
